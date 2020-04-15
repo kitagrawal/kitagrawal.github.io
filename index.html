@@ -1,0 +1,578 @@
+﻿<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+		<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+		<link rel="stylesheet" type="text/css" href="css/style.css">
+		<link href="https://fonts.googleapis.com/css?family=Roboto&display=swap" rel="stylesheet">
+	</head>
+
+	<body>
+		<div class="container">
+			<div class="üstten-yükleyici-durum"></div>
+			<div class="row">
+				<div class="col-md-3 col-sm-12">
+					<div class="card">
+						<div class="card-body biocard">
+							<img class="card-img-top" src="assets/photo.jpg" alt="Card image" style="border-top: 3px solid #425cbb;">
+							<div class="biocard-content">
+								<div class="icon text-center">
+									<i class="fa fa-user fa-lg list-begin" style="color: #ffffff; padding-top: 11px;"></i>
+								</div>
+								<ul class="lc-checks">
+									<li>
+										<span class="lc-checks__check"></span>
+										<p class="lc-checks__feature">Name: <span style="color: #7f7f7f;">Ankit Agrawal</span></p>
+									</li>
+									<li>
+										<span class="lc-checks__check"></span>
+										<p class="lc-checks__feature">Email: <span style="color: #7f7f7f;">kit.agrawal1 at gmail dot com</span></p>
+									</li>
+								</ul>
+							</div>
+							<hr class="text-center" style="width: 95%;">
+							<div class="text-center">
+								<a href="https://www.github.com/ankit--agrawal/" target="_blank">
+									<i class="fa fa-github social"></i>
+								</a>
+								<a href="https://www.linkedin.com/in/ankitagrawal3/" target="_blank">
+									<i class="fa fa-linkedin social"></i>
+								</a>
+							</div>
+							<hr class="text-center" style="width: 95%;">
+							<div class="text-center">
+								<a href="/assets/resume.pdf" class="btn btn-primary" download>
+									Download CV 
+									<i class="fa fa-download" id="downloadicon"></i>
+								</a>
+							</div>
+							<div class="text-right" style="font-size: 13px; padding-top: 20px; padding-right: 15px;">
+								<i>Last updated: 23rd June, 2019</i>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="col-md-9">
+					<div class="card header">
+						<div class="row">
+							<nav class="navbar navhome">
+								<i class="fa fa-home fa-lg" onclick="gethome()" id="link"></i>
+							</nav>
+							
+							<nav class="navbar navbar-expand-lg" id="navbar">
+								<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent">
+									<span class="navbar-toggler-icon"></span>
+								</button>
+
+								<div class="collapse navbar-collapse" id="navbarSupportedContent">
+									<ul class="navbar-nav">
+										<li class="nav-item">
+											<a class="nav-link" onclick="getproject()" href="#" id="link1"><b>Projects</b></a>
+										</li>
+										<li class="nav-item">
+											<a class="nav-link" onclick="getcertificate()" href="#" id="link2"><b>Certificates</b></a>
+										</li>
+										<!--<li class="nav-item">
+											<a class="nav-link" onclick="getcalendar()" href="#" id="link3"><b>Calendar</b></a>
+										</li>
+										<li class="nav-item">
+											<a class="nav-link" onclick="getblog()" href="#" id="link4"><b>Blogs</b></a>
+										</li>-->
+									</ul>
+								</div>
+							</nav>
+
+
+							<!--<nav class="navbar navbar-expand navsocial">
+								<ul class="navbar-nav">
+									<li class="nav-item">
+										<a href="https://www.github.com/ankit--agrawal/" target="_blank"><i class="fa fa-github social"></i></a>
+									</li>
+									<li class="nav-item">
+										<a href="https://www.linkedin.com/in/ankitagrawal3/" target="_blank"><i class="fa fa-linkedin social"></i></a>
+									</li>
+								</ul>
+							</nav>-->
+
+						</div>
+					</div>
+
+					<div class="card main" id="home" style="display: block;">
+						<ul class="list-group list-group-flush">
+							<li class="list-group-item">
+								<div class="card-body">
+									<h4 class="card-title title">About Me</h4>
+									<p class="card-text">
+										I am a self-taught data science enthusiast with Master's degree in computer science. My current work at The University of Utah 
+                                        involves automating parameter tuning for software verification tool, SMACK, in order to reduce Type II errors and TIMEOUT warnings. 
+                                        The parameter search space is approx. 2<sup>33</sup> and the goal is to find a subspace of parameter configuration 
+                                        such that for each program in SV-COMP benchmarks and a verification task we minimize TIMEOUT or false negative output.
+                                        In my free time, I read papers and articles on Deep Learning 
+                                        esp. Computer Vision and participate in Kaggle competitions whenever possible. I also enroll frequently in statistics, linear algebra or 
+                                        machine learning online courses to keep improving and advancing my skills.
+									</p>
+								</div>
+							</li>
+							<li class="list-group-item" style="background: #f8f8f8;">
+								<div class="card-body">
+									
+								</div>	
+							</li>
+						</ul>	
+					</div>
+
+					<div class="card main" id="project" style="display: none;">
+						<ul class="list-group list-group-flush">
+							<li class="list-group-item">
+								<div class="card-body">
+									<h4 class="card-title title">Projects</h4>
+									
+									<div class="projecticon text-center" style="margin-top: 30px;">
+										<i class="fa fa-file-code-o fa-lg list-begin" style="color: #ffffff; padding-top: 12px;"></i>
+									</div>
+									<ul class="list-projects">
+										<li class="list-item" style="height: 115px;">
+											<span class="list-dot"></span>
+											<p class="list-feature">
+												<b>Google Landmark Recognition 2019, </b>
+												<i>Kaggle Competition</i>
+												<b>
+													<a href="https://www.kaggle.com/c/landmark-recognition-2019" target="_blank" class="projectlinks" style="padding-left: 10px;">
+													 (Read more)
+													</a>
+												</b>
+                                            </p>
+												<ul class="description">
+                                                    <li>
+                                                        Implemented a computer vision pipeline to detect landmarks in the training dataset of 4 million images using Python and Keras. 
+                                                        Performed data cleaning to speed up the runtime 6x. Used transfer learning method with VGG16 for classification of the detected landmarks.
+                                                    </li>
+                                                    <li>
+                                                        Training set: 4.2M images, Test set: 120k images, Classification categories: 203k
+                                                        <a href="https://github.com/ankit--agrawal/landmark-detection-google" target="_blank" class="projectlinks">
+                                                            (Code)
+                                                        </a>
+                                                    </li>
+												</ul>
+										</li>
+										<li class="list-item" style="height: 95px;">
+											<span class="list-dot"></span>
+											<p class="list-feature">
+												<b>Predict Car Speed, </b>
+												<i>comma.ai speed challenge </i>
+												<b>
+													<a href="https://comma.ai/jobs" target="_blank" class="projectlinks" style="padding-left: 10px;">
+													 (Read more)
+													</a>
+												</b>
+											</p>
+											<ul class="description">
+                                                <li>
+                                                    Extracted frames from video files and implemented a computer vision pipeline to predict speed of the car using Keras 
+                                                    and OpenCV image processing capabilities.
+                                                </li>
+                                                <li>
+                                                    Train set: 21k images, Test set: 10k images, Mean Squared Error = 3.2
+                                                    <a href="https://github.com/ankit--agrawal/MLprojects/tree/master/speed%20of%20car" target="_blank" class="projectlinks">
+                                                        (Code)
+                                                    </a>
+                                                </li>
+											</ul>
+										</li>
+										<li class="list-item" style="height: 160px;">
+											<span class="list-dot"></span>
+											<p class="list-feature">
+												<b>Automated prediction and analysis of SV-COMP benchmarks, </b>
+												<i>SOARlab </i>
+											</p>
+											<ul class="description">
+                                                <li>
+                                                    Applied ML tools to analyze and categorize input C programs into  SV-COMP benchmark categories using Python, sklearn and Pandas  capabilities.
+                                                     Applied PCA, t-SNE to speed up the algorithm by 3x. 
+                                                </li>
+                                                <li>
+                                                    Performed data labeling, data cleaning, data analysis and  hyperparameter tuning to optimize the accuracy and loss in the training  procedure. 
+                                                    The developed model achieved 98% accuracy.
+                                                </li>
+												<li>
+													Training set: 6,000 benchmarks (approx. 5k loc each), Test set: 1,000 benchmarks, Classification accuracy: 98.02%
+												</li>
+											</ul>
+										</li>
+										<li class="list-item" style="height: 90px;">
+											<span class="list-dot"></span>
+											<p class="list-feature">
+												<b>CNN models </b>
+											</p>
+											<ul class="description">
+												<li>
+													Implemented code to classify images using different CNN architectures (GoogLeNet. ResNet, InceptionV3, DenseNet121, etc) leveraging the pre-trained data from ImageNet dataset.
+												</li>
+												<li>
+													The code can be found 
+													<a href="https://github.com/ankit--agrawal/MLprojects/tree/master/cnn%20models" target="_blank" class="projectlinks">
+														here.
+													</a>
+												</li>
+											</ul>
+										</li>
+										<li class="list-item" style="height: 115px;">
+											<span class="list-dot"></span>
+											<p class="list-feature">
+												<b>Pair trading and Machine Learning </b>
+											</p>
+											<ul class="description">
+												<li>
+													Pair trading is basic form of Statistical Arbitrage. The concept behind pair trading is the assumption that two co-integrated stocks would not drift too far away from each other.
+												</li>
+												<li>
+													The documentation can be found 
+													<a href="https://github.com/ankit--agrawal/pair_trading" target="_blank" class="projectlinks">
+														here.
+													</a>
+												</li>
+												<li>
+													The code for this project is unavailable because I am planning to test this concept on live data-set.
+												</li>
+											</ul>
+										</li>
+										<li class="list-item" style="height: 100px;">
+											<span class="list-dot"></span>
+											<p class="list-feature">
+												<b>Simple Python Projects </b>
+											</p>
+											<ul class="description">
+												<li>
+													<a href="https://github.com/ankit--agrawal/PythonProjects/tree/master/english%20dictionary" target="_blank" class="projectlinks">
+														English Dictionary
+													</a>
+												</li>
+												<li>
+													<a href="https://github.com/ankit--agrawal/PythonProjects/tree/master/website%20blocker" target="_blank" class="projectlinks">
+														Website Blocker
+													</a>
+												</li>
+												<li>
+													<a href="https://github.com/ankit--agrawal/PythonProjects/tree/master/webmaps" target="_blank" class="projectlinks">
+														WebMaps
+													</a>
+												</li>
+											</ul>
+										</li>
+									</ul>
+								</div>
+							</li>
+						</ul>	
+					</div>
+
+					<div class="card main" id="certificate" style="display: none;">
+						<ul class="list-group list-group-flush">
+							<li class="list-group-item">
+								<div class="card-body">
+									<h4 class="card-title title">Certifications</h4>
+									
+									<div class="projecticon text-center" style="margin-top: 30px;">
+										<i class="fa fa-trophy fa-lg list-begin" style="color: #ffffff; padding-top: 12px;"></i>
+									</div>
+									<ul class="list-projects">
+										<li class="list-item" style="height: 200px;">
+											<span class="list-dot"></span>
+											<p class="list-feature">
+												<b>Coursera</b>
+												<ul class="description">
+                                                    <li>
+                                                        Improving Deep Neural Networks: Hyperparameter tuning, Regularization and Optimization
+                                                        <a href="https://www.coursera.org/account/accomplishments/verify/GCXQPLFR4K7K" target="_blank" class="projectlinks">
+                                                            Link
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        Google Cloud Platform Big Data and Machine Learning Fundamentals
+                                                        <a href="https://www.coursera.org/account/accomplishments/certificate/RV7BJ5NCT5NV" target="_blank" class="projectlinks">
+                                                        Link </a>
+                                                    </li>
+                                                    <li>
+                                                        Deeplearning.ai specialization: Structuring Machine Learning Projects
+                                                        <a href="https://www.coursera.org/account/accomplishments/verify/VHWEGS2RR6KW" target="_blank" class="projectlinks">
+                                                            Link
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        Deeplearning.ai specialization: Sequence Models
+                                                        <a href="https://www.coursera.org/account/accomplishments/verify/L9A3PVTP3N6L" target="_blank" class="projectlinks">
+                                                            Link
+                                                        </a>
+                                                    </li>
+													<li>
+														Deeplearning.ai specialization: Convolutional Neural Networks
+                                                        <a href="https://www.coursera.org/account/accomplishments/verify/GJ34UKZ5FK5D" target="_blank" class="projectlinks">
+                                                            Link
+                                                        </a>
+													</li>
+													<li>
+														Machine Learning
+                                                        <a href="https://www.coursera.org/account/accomplishments/verify/HG2BJ5DEHYQE" target="_blank" class="projectlinks">
+                                                            Link
+                                                        </a>
+													</li>
+													<li>
+														Mathematics for Machine Learning: Linear Algebra
+                                                        <a href="https://www.coursera.org/account/accomplishments/verify/RRRXTDJFAEPV" target="_blank" class="projectlinks">
+                                                            Link
+                                                        </a>
+													</li>
+													<li>
+														Mathematics for Machine Learning: Multivariate Calculus
+                                                        <a href="https://www.coursera.org/account/accomplishments/verify/2H7KS6H6F8Z6" target="_blank" class="projectlinks">
+                                                            Link
+                                                        </a>
+													</li>
+												</ul>
+											</p>
+										</li>
+										<li class="list-item" style="height: 280px;">
+											<span class="list-dot"></span>
+											<p class="list-feature">
+												<b>Udemy</b>
+												<ul class="description">
+													<li>
+														Deep Learning A-Z: Hands-on Artificial Neural Networks
+													</li>
+													<li>
+														Machine Learning A-Z: Hands-on Python and R in Data Science
+													</li>
+													<li>
+														Data Science: Natural Language Processing
+													</li>
+													<li>
+														The complete SQL Bootcamp
+													</li>
+													<li>
+														Machine Learning, Data Science and Deep Learning using Python
+													</li>
+												</ul>
+											</p>
+										</li>
+									</ul>
+								</div>
+							</li>
+						</ul>	
+					</div>
+
+					<div class="card main" id="calendar" style="display: none;">
+						<ul class="list-group list-group-flush">
+							<li class="list-group-item">
+								<div class="card-body">
+									<h4 class="card-title title">Calendar</h4>
+									<p class="card-text">
+                                        <iframe src="https://calendar.google.com/calendar/embed?src=kit.agrawal1%40gmail.com&ctz=America%2FDenver" style="width: 100%; height: 500px;" frameborder="0" scrolling="no"></iframe>
+									</p>
+								</div>
+							</li>
+						</ul>	
+					</div>
+
+					<div class="card main" id="blog" style="display: none;">
+						<ul class="list-group list-group-flush">
+							<li class="list-group-item">
+								<div class="card-body">
+									<h4 class="card-title title">Blogs</h4>
+									
+								</div>
+							</li>
+						</ul>	
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script type="text/javascript">
+
+			function gethome() {
+				var x = document.getElementById("home");
+				var y = document.getElementById("project");
+				var z = document.getElementById("certificate");
+
+				var link = document.getElementById("link");
+				var link1 = document.getElementById("link1");
+				var link2 = document.getElementById("link2");
+
+				if (x.style.display === "none") {
+					x.style.display = 'block';
+					y.style.display = 'none';
+					z.style.display = 'none';
+					a.style.display = 'none';
+					b.style.display = 'none';
+				}
+
+				link.style.transform = 'scale(1.2)';
+				link.style.filter = 'drop-shadow(0 0 0.5rem #000000)';
+				link1.style.color = '#000000';
+				link2.style.color = '#000000';
+				link3.style.color = '#000000';
+				link4.style.color = '#000000';
+			}
+			function getproject() {
+				var x = document.getElementById("home");
+				var y = document.getElementById("project");
+				var z = document.getElementById("certificate");
+				var a = document.getElementById("calendar");
+				var b = document.getElementById("blog");
+
+				var link = document.getElementById("link");
+				var link1 = document.getElementById("link1");
+				var link2 = document.getElementById("link2");
+				var link3 = document.getElementById("link3");
+				var link4 = document.getElementById("link4");
+
+				if (x.style.display === 'block') {
+					x.style.display = 'none';
+					y.style.display = 'block';
+				}
+				else if (z.style.display === 'block') {
+					z.style.display = 'none';
+					y.style.display = 'block';
+				}
+				else if (a.style.display === 'block') {
+					a.style.display = 'none';
+					y.style.display = 'block';
+				}
+				else if (b.style.display = 'block') {
+					b.style.display = 'none';
+					y.style.display = 'block';
+				}
+
+				link.style.transform = 'scale(1.0)';
+				link.style.filter = '';
+				link1.style.color = '#425cbb';
+				link2.style.color = '#000000';
+				link3.style.color = '#000000';
+				link4.style.color = '#000000';
+
+			}
+			function getcertificate() {
+				var x = document.getElementById("home");
+				var y = document.getElementById("project");
+				var z = document.getElementById("certificate");
+				var a = document.getElementById("calendar");
+				var b = document.getElementById("blog");
+
+				var link = document.getElementById("link");
+				var link1 = document.getElementById("link1");
+				var link2 = document.getElementById("link2");
+				var link3 = document.getElementById("link3");
+				var link4 = document.getElementById("link4");
+
+				if (x.style.display === 'block') {
+					x.style.display = 'none';
+					z.style.display = 'block';
+				}
+				else if (y.style.display === 'block') {
+					y.style.display = 'none';
+					z.style.display = 'block';
+				}
+				else if (a.style.display === 'block') {
+					a.style.display = 'none';
+					z.style.display = 'block';
+				}
+				else if (b.style.display = 'block') {
+					b.style.display = 'none';
+					z.style.display = 'block';
+				}
+
+				link.style.transform = 'scale(1.0)';
+				link.style.filter = '';
+				link1.style.color = '#000000';
+				link2.style.color = '#425cbb';
+				link3.style.color = '#000000';
+				link4.style.color = '#000000';
+
+			}
+			function getcalendar() {
+				var x = document.getElementById("home");
+				var y = document.getElementById("project");
+				var z = document.getElementById("certificate");
+				var a = document.getElementById("calendar");
+				var b = document.getElementById("blog");
+
+				var link = document.getElementById("link");
+				var link1 = document.getElementById("link1");
+				var link2 = document.getElementById("link2");
+				var link3 = document.getElementById("link3");
+				var link4 = document.getElementById("link4");
+
+				if (x.style.display === 'block') {
+					x.style.display = 'none';
+					a.style.display = 'block';
+				}
+				else if (y.style.display === 'block') {
+					y.style.display = 'none';
+					a.style.display = 'block';
+				}
+				else if (z.style.display === 'block') {
+					z.style.display = 'none';
+					a.style.display = 'block';
+				}
+				else if (b.style.display = 'block') {
+					b.style.display = 'none';
+					a.style.display = 'block';
+				}
+
+				link.style.transform = 'scale(1.0)';
+				link.style.filter = '';
+				link1.style.color = '#000000';
+				link2.style.color = '#000000';
+				link3.style.color = '#425cbb';
+				link4.style.color = '#000000';
+
+			}
+			function getblog() {
+				var x = document.getElementById("home");
+				var y = document.getElementById("project");
+				var z = document.getElementById("certificate");
+				var a = document.getElementById("calendar");
+				var b = document.getElementById("blog");
+
+				var link = document.getElementById("link");
+				var link1 = document.getElementById("link1");
+				var link2 = document.getElementById("link2");
+				var link3 = document.getElementById("link3");
+				var link4 = document.getElementById("link4");
+
+				if (x.style.display === 'block') {
+					x.style.display = 'none';
+					b.style.display = 'block';
+				}
+				else if (y.style.display === 'block') {
+					y.style.display = 'none';
+					b.style.display = 'block';
+				}
+				else if (z.style.display === 'block') {
+					z.style.display = 'none';
+					b.style.display = 'block';
+				}
+				else if (a.style.display === 'block') {
+					a.style.display = 'none';
+					b.style.display = 'block';
+				}
+
+				link.style.transform = 'scale(1.0)';
+				link.style.filter = '';
+				link1.style.color = '#000000';
+				link2.style.color = '#000000';
+				link3.style.color = '#000000';
+				link4.style.color = '#425cbb';
+
+			}
+			
+		</script>
+		<script src="http://code.jquery.com/jquery-latest.js"></script>
+		<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+		<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+	</body>
+</html>
