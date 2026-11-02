@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Book a Consultation — Ankit Agrawal</title>
+<meta name="description" content="Book a paid 1:1 mentoring or GenAI advisory session with Ankit Agrawal: Python, AWS, ML math, agentic workflows and GenAI strategy.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pages.css">
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <nav>
+      <a class="logo" href="index.html">Ankit<span>.</span>Agrawal</a>
+      <div class="links">
+        <a href="index.html#about">About</a>
+        <a href="index.html#work">Work</a>
+        <a href="index.html#mentoring">Mentoring</a>
+        <a class="cta pill solid" href="book.html" aria-current="page">Book<span class="xs-hide"> a consult</span></a>
+        <a class="cta pill" href="subscribe.html">Newsletter</a>
+        <button class="theme" id="theme" aria-label="Toggle theme">◐</button>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="page-hero">
+    <div class="wrap">
+      <span class="mono">Consultations</span>
+      <h1>Book time with me, pay securely, pick a slot.</h1>
+      <p class="lead">One-on-one sessions for engineers, learners and leaders. Choose a session, pay through Stripe, then choose a time that suits you.</p>
+    </div>
+  </div>
+
+  <section class="block">
+    <div class="wrap">
+      <div id="setup" class="setup" hidden></div>
+      <div class="grid" id="offers"></div>
+
+      <div id="scheduler" class="embed" hidden></div>
+
+      <h2 style="margin:56px 0 18px;font-size:1.6rem">How it works</h2>
+      <div class="steps">
+        <div><h3>Choose a session</h3><p>Pick the format that fits what you want to work on.</p></div>
+        <div><h3>Pay securely</h3><p>Checkout is handled by Stripe. Your card details never touch this site.</p></div>
+        <div><h3>Pick a time</h3><p>After payment you're taken straight to my calendar to choose a slot.</p></div>
+      </div>
+      <p class="note" style="margin-top:28px">Need to reschedule or have a question first? Reach me on <a href="index.html#contact">the contact section</a>.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© <span id="year">2026</span> Ankit Agrawal</span>
+    <a href="index.html">← Back to home</a>
+  </div>
+</footer>
+
+<script src="config.js"></script>
+<script src="site.js"></script>
+<script>
+(function () {
+  const { cfg, isSet, el, embed } = window.Site;
+  const offers = document.getElementById('offers');
+  const sched = document.getElementById('scheduler');
+  const setup = document.getElementById('setup');
+  const list = cfg.consultations || [];
+  let missing = false;
+
+  list.forEach(c => {
+    const card = el('article', { class: 'card' });
+    card.appendChild(el('span', { class: 'mono', text: 'Consultation' }));
+    card.appendChild(el('h3', { text: c.name }));
+    card.appendChild(el('div', { class: 'meta' }, [
+      el('span', { class: 'price', text: c.price || '' }),
+      el('span', { class: 'dur', text: c.duration || '' })
+    ]));
+    card.appendChild(el('p', { text: c.description || '' }));
+
+    const actions = el('div', { class: 'btns' });
+    if (isSet(c.stripeLink)) {
+      // Pay first via Stripe; Stripe then redirects to thanks.html?type=consult
+      const u = new URL(c.stripeLink);
+      if (c.id) u.searchParams.set('client_reference_id', String(c.id).replace(/[^A-Za-z0-9_-]/g, ''));
+      actions.appendChild(el('a', { class: 'btn primary', href: u.toString(), rel: 'noopener', text: 'Pay & book →' }));
+    } else if (isSet(cfg.schedulerUrl)) {
+      // No Stripe link: go straight to the scheduler (use with Cal.com's built-in payments)
+      const b = el('button', { class: 'btn primary', type: 'button', text: 'Pick a time →' });
+      b.addEventListener('click', () => {
+        embed(sched, cfg.schedulerUrl);
+        sched.hidden = false;
+        sched.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      actions.appendChild(b);
+    } else {
+      missing = true;
+      actions.appendChild(el('span', { class: 'btn primary disabled', text: 'Coming soon' }));
+    }
+    card.appendChild(actions);
+    offers.appendChild(card);
+  });
+
+  if (missing) {
+    setup.hidden = false;
+    setup.textContent = 'Setup needed: add your Stripe Payment Links and scheduler URL in config.js (see SETUP.md). Visitors will see "Coming soon" until then.';
+  }
+})();
+</script>
+</body>
+</html>
