@@ -15,7 +15,6 @@ window.SITE_CONFIG = {
   consultations: [
     {
       id: "advisory",
-      audience: "For founders & business leaders",
       name: "GenAI & Strategy Advisory",
       duration: "60 min",
       price: "$120",   // text shown on the page; set the same amount on the Stripe Payment Link

@@ -1,0 +1,87 @@
+/* Shared by every page. Figma kit "05 · Teal, Refined".
+   Page-specific styles live in index.css (home) and pages.css (book, subscribe, thanks, 404). */
+
+/* ---------- tokens ---------- */
+:root{
+  --bg:#f7f5f0; --surface:#ffffff; --ink:#16181d; --muted:#5d6370; --line:#e3dfd6;
+  --accent:#0f6b5c; --accent-ink:#ffffff; --accent-soft:#dff0ec; --warm:#c8552b;
+  --radius:14px; --maxw:1200px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1113; --surface:#161a1d; --ink:#eceae4; --muted:#9aa1ab; --line:#262c31;
+    --accent:#4fd1b5; --accent-ink:#06201b; --accent-soft:#12302a; --warm:#ff8a5c;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1113; --surface:#161a1d; --ink:#eceae4; --muted:#9aa1ab; --line:#262c31;
+  --accent:#4fd1b5; --accent-ink:#06201b; --accent-soft:#12302a; --warm:#ff8a5c;
+}
+
+/* ---------- base ---------- */
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font:400 17px/1.65 'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+[hidden]{display:none !important}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.wrap{max-width:calc(var(--maxw) + 48px);margin:0 auto;padding:0 24px}
+h1,h2,h3{font-family:'Fraunces',Georgia,serif;font-weight:600;line-height:1.15;letter-spacing:-.01em}
+.mono{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:13px;line-height:1.5;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.label{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:12px;line-height:1.5;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.note{font-size:14px;color:var(--muted)}
+
+/* ---------- header ---------- */
+header{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+nav{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 0}
+.logo{font-family:'Fraunces',serif;font-weight:600;font-size:24px;line-height:1.15;letter-spacing:-.01em;text-decoration:none;white-space:nowrap}
+.logo span{color:var(--accent)}
+.navlinks{display:flex;gap:32px;font-size:15px;line-height:1.5}
+.navlinks a{text-decoration:none;color:var(--muted);transition:color .2s}
+.navlinks a:hover{color:var(--ink)}
+.links{display:flex;gap:10px;align-items:center}
+.links a.pill{padding:10px 18px;border-radius:999px;border:1px solid var(--line);color:var(--ink);font-size:15px;font-weight:500;line-height:1.5;text-decoration:none;white-space:nowrap;transition:border-color .2s}
+.links a.pill:hover{border-color:var(--accent)}
+.links a.pill.solid{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.theme{display:grid;place-items:center;flex:none;background:none;border:1px solid var(--line);color:var(--ink);width:36px;height:36px;border-radius:50%;cursor:pointer}
+.theme::before{content:"";width:16px;height:16px;background:currentColor;-webkit-mask:url(theme-icon.svg) center/contain no-repeat;mask:url(theme-icon.svg) center/contain no-repeat}
+@media(max-width:860px){.navlinks{display:none}}
+@media(max-width:600px){
+  nav{padding:14px 0}
+  .logo{font-size:20px}
+  .links a.pill{padding:5px 9px;font-size:13px}
+  .xs-hide{display:none}
+}
+
+/* ---------- buttons ---------- */
+.btns{display:flex;flex-wrap:wrap;gap:14px}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:16px 28px;border-radius:999px;font:600 16px/1.5 'Inter',system-ui,sans-serif;text-decoration:none;border:1px solid var(--ink);transition:transform .15s;background:none;color:var(--ink);cursor:pointer}
+.btn:hover{transform:translateY(-2px)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn[disabled],.btn.disabled{opacity:.5;cursor:not-allowed;transform:none;pointer-events:none}
+
+/* ---------- shared components ---------- */
+/* consultation cards (drawn from config.js by site.js) */
+.offers{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px}
+.offer{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:40px;display:flex;flex-direction:column;align-items:flex-start;gap:16px}
+.offer.featured{border:1.5px solid var(--accent)}
+.offer:only-child{max-width:760px}
+.offer h3{font-size:34px;line-height:1.12;letter-spacing:-.005em}
+.offer .meta{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:13px;line-height:1.5;color:var(--muted)}
+.offer p{color:var(--muted);font-size:15px;line-height:1.65}
+.offer .actions{margin-top:auto;padding-top:8px}
+
+/* price: big number plus a small caption */
+.price{display:flex;align-items:center;gap:14px}
+.price b{font-family:'Fraunces',serif;font-weight:600;font-size:56px;line-height:1;letter-spacing:-.01em}
+.price span{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:12px;line-height:1.5;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+
+/* numbered rows ("what you get") */
+.rows{list-style:none;counter-reset:r}
+.rows li{counter-increment:r;display:flex;gap:20px;padding:18px 0;border-top:1px solid var(--line);font-size:19px;line-height:1.6}
+.rows li::before{content:counter(r,decimal-leading-zero);font-family:'JetBrains Mono',monospace;font-weight:500;font-size:13px;line-height:1.5;color:var(--accent);padding-top:5px}
+
+/* ---------- footer ---------- */
+footer{border-top:1px solid var(--line);padding:28px 0;color:var(--muted);font-size:14px}
+footer .wrap{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+footer a{color:var(--muted)}
