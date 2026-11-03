@@ -49,8 +49,6 @@
       const featured = i === 0;
       const btnClass = featured ? 'btn primary' : 'btn';
       const card = el('article', { class: featured ? 'offer featured' : 'offer' });
-      if (c.audience) card.appendChild(el('span', { class: 'mono audience', text: c.audience }));
-      card.appendChild(el('h3', { text: c.name }));
       card.appendChild(el('span', { class: 'meta', text: [c.duration, c.price].filter(Boolean).join(' · ') }));
       card.appendChild(el('p', { text: c.description || '' }));
 
