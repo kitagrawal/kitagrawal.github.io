@@ -6,15 +6,17 @@ Static portfolio site, hosted on GitHub Pages. No build step or dependencies.
 
 | File | Purpose |
 |------|---------|
-| `index.html` | The home page (its CSS is inline; loads `config.js` and `site.js`) |
+| `index.html` | The home page markup. Styles are in `index.css`, behaviour in `home.js` |
 | `photo.jpg` | **You add this**: your portrait (about 1200x1500 px, under 300 KB) |
 | `favicon.svg` | Browser tab icon (edit the initials) |
-| `404.html` | Custom "page not found" page (shares `pages.css`; every URL is root-absolute because GitHub Pages serves it at any missing path) |
+| `404.html` | Custom "page not found" page (shares `base.css` and `pages.css`; every URL is root-absolute because GitHub Pages serves it at any missing path) |
 | `book.html` | Consultation booking page (Stripe payment + scheduler) |
 | `subscribe.html` | Mailing list sign-up page (saves to Google Sheet, then Stripe) |
 | `thanks.html` | Post-payment page (Stripe redirects here) |
 | `config.js` | **Edit this**: Stripe links, scheduler URL, sign-up endpoint |
-| `pages.css`, `site.js` | Shared styles for the sub-pages; shared helpers (theme, consultation cards) for every page |
+| `base.css` | Styles every page shares: colour tokens, header, buttons, consultation cards, price, rows, footer |
+| `index.css`, `pages.css` | Page-specific styles: `index.css` for the home page, `pages.css` for book, subscribe, thanks and 404 |
+| `site.js`, `home.js` | `site.js` is the shared helpers (theme, consultation cards) for every page; `home.js` is the home page's own script |
 | `theme-icon.svg` | Theme toggle icon (used as a CSS mask, so it follows the text colour) |
 | `apps-script/Code.gs` | Google Apps Script that writes sign-ups to a Sheet (CSV/Excel) |
 | `scripts/stripe-sync.mjs`, `.github/workflows/stripe-sync.yml` | Daily GitHub Action that copies newsletter subscription statuses from Stripe into the Sheet |
