@@ -63,6 +63,7 @@ nav{display:flex;align-items:center;justify-content:space-between;gap:16px;paddi
 .offers{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px}
 .offer{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:40px;display:flex;flex-direction:column;align-items:flex-start;gap:16px}
 .offer.featured{border:1.5px solid var(--accent)}
+.offer:only-child{max-width:760px}
 .offer .audience{font-size:12px}
 .offer h3{font-size:34px;line-height:1.12;letter-spacing:-.005em}
 .offer .meta{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:13px;line-height:1.5;color:var(--muted)}
