@@ -18,18 +18,9 @@ window.SITE_CONFIG = {
       audience: "For founders & business leaders",
       name: "GenAI & Strategy Advisory",
       duration: "60 min",
-      price: "$XX",
+      price: "$120",   // text shown on the page; set the same amount on the Stripe Payment Link
       description: "For founders and business leaders: where GenAI and agentic workflows create value, what to build first, and how to avoid costly pilots.",
       stripeLink: "REPLACE_WITH_STRIPE_PAYMENT_LINK_FOR_ADVISORY"
-    },
-    {
-      id: "mentoring",
-      audience: "For engineers & learners",
-      name: "1:1 Mentoring Session",
-      duration: "60 min",
-      price: "$XX",   // text shown on the page; set the real amount in Stripe too
-      description: "Python, AWS deployments and CI/CD, system design, or the math behind ML (linear algebra, statistics, calculus). Bring a goal or a project.",
-      stripeLink: "REPLACE_WITH_STRIPE_PAYMENT_LINK_FOR_MENTORING"
     }
   ],
 
@@ -42,7 +33,7 @@ window.SITE_CONFIG = {
   /* ---- Mailing list (subscribe.html) ---- */
   newsletter: {
     name: "The Applied AI Letter",
-    price: "$X",   // monthly amount; pages add "per month". Billed monthly, auto-renewing, cancel anytime
+    price: "$7",   // monthly amount; pages add "per month". Billed monthly, auto-renewing, cancel anytime
     description: "Practical notes on applied ML, GenAI and AWS, plus early updates on what I'm building.",
     perks: [
       "Hands-on write-ups from real banking and healthcare ML work",

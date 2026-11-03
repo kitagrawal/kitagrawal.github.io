@@ -9,7 +9,7 @@ Static portfolio site, hosted on GitHub Pages. No build step or dependencies.
 | `index.html` | The home page (its CSS is inline; loads `config.js` and `site.js`) |
 | `photo.jpg` | **You add this**: your portrait (about 1200x1500 px, under 300 KB) |
 | `favicon.svg` | Browser tab icon (edit the initials) |
-| `404.html` | Custom "page not found" page |
+| `404.html` | Custom "page not found" page (shares `pages.css`; every URL is root-absolute because GitHub Pages serves it at any missing path) |
 | `book.html` | Consultation booking page (Stripe payment + scheduler) |
 | `subscribe.html` | Mailing list sign-up page (saves to Google Sheet, then Stripe) |
 | `thanks.html` | Post-payment page (Stripe redirects here) |
