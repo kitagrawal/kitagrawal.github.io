@@ -16,13 +16,15 @@
   <div class="wrap">
     <nav>
       <a class="logo" href="index.html">Ankit<span>.</span>Agrawal</a>
-      <div class="links">
-        <a href="index.html#about">About</a>
+      <div class="navlinks">
+        <a href="index.html#letter">Letter</a>
+        <a href="index.html#advisory">Advisory</a>
         <a href="index.html#work">Work</a>
-        <a href="index.html#mentoring">Mentoring</a>
-        <a class="cta pill solid" href="book.html" aria-current="page">Book<span class="xs-hide"> a consult</span></a>
-        <a class="cta pill" href="subscribe.html">Newsletter</a>
-        <button class="theme" id="theme" aria-label="Toggle theme">◐</button>
+      </div>
+      <div class="links">
+        <a class="pill" href="book.html" aria-current="page">Book<span class="xs-hide"> a session</span></a>
+        <a class="pill solid" href="subscribe.html">Subscribe</a>
+        <button class="theme" id="theme" aria-label="Toggle theme"></button>
       </div>
     </nav>
   </div>
@@ -40,11 +42,11 @@
   <section class="block">
     <div class="wrap">
       <div id="setup" class="setup" hidden></div>
-      <div class="grid" id="offers"></div>
+      <div class="offers" id="offers"></div>
 
       <div id="scheduler" class="embed" hidden></div>
 
-      <h2 style="margin:56px 0 18px;font-size:1.6rem">How it works</h2>
+      <h2 class="how">How it works</h2>
       <div class="steps">
         <div><h3>Choose a session</h3><p>Pick the format that fits what you want to work on.</p></div>
         <div><h3>Pay securely</h3><p>Checkout is handled by Stripe. Your card details never touch this site.</p></div>
@@ -66,44 +68,14 @@
 <script src="site.js"></script>
 <script>
 (function () {
-  const { cfg, isSet, el, embed } = window.Site;
-  const offers = document.getElementById('offers');
+  const { cfg, embed, renderOffers } = window.Site;
   const sched = document.getElementById('scheduler');
   const setup = document.getElementById('setup');
-  const list = cfg.consultations || [];
-  let missing = false;
 
-  list.forEach(c => {
-    const card = el('article', { class: 'card' });
-    card.appendChild(el('span', { class: 'mono', text: 'Consultation' }));
-    card.appendChild(el('h3', { text: c.name }));
-    card.appendChild(el('div', { class: 'meta' }, [
-      el('span', { class: 'price', text: c.price || '' }),
-      el('span', { class: 'dur', text: c.duration || '' })
-    ]));
-    card.appendChild(el('p', { text: c.description || '' }));
-
-    const actions = el('div', { class: 'btns' });
-    if (isSet(c.stripeLink)) {
-      // Pay first via Stripe; Stripe then redirects to thanks.html?type=consult
-      const u = new URL(c.stripeLink);
-      if (c.id) u.searchParams.set('client_reference_id', String(c.id).replace(/[^A-Za-z0-9_-]/g, ''));
-      actions.appendChild(el('a', { class: 'btn primary', href: u.toString(), rel: 'noopener', text: 'Pay & book →' }));
-    } else if (isSet(cfg.schedulerUrl)) {
-      // No Stripe link: go straight to the scheduler (use with Cal.com's built-in payments)
-      const b = el('button', { class: 'btn primary', type: 'button', text: 'Pick a time →' });
-      b.addEventListener('click', () => {
-        embed(sched, cfg.schedulerUrl);
-        sched.hidden = false;
-        sched.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-      actions.appendChild(b);
-    } else {
-      missing = true;
-      actions.appendChild(el('span', { class: 'btn primary disabled', text: 'Coming soon' }));
-    }
-    card.appendChild(actions);
-    offers.appendChild(card);
+  const missing = renderOffers(document.getElementById('offers'), () => {
+    embed(sched, cfg.schedulerUrl);
+    sched.hidden = false;
+    sched.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 
   if (missing) {
