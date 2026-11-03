@@ -103,6 +103,7 @@ label{font-size:14px;font-weight:500;line-height:1.5;display:grid;gap:6px}
 input[type=email],input[type=text]{width:100%;padding:13px 16px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:400 17px/1.65 'Inter',system-ui,sans-serif}
 input::placeholder{color:var(--muted)}
 input:focus-visible{outline:2px solid var(--accent);outline-offset:-1px}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .check{display:flex;gap:10px;align-items:flex-start;font-weight:400;color:var(--muted);font-size:14px;line-height:1.65}
 .check input{margin-top:5px;width:14px;height:14px;flex:none;accent-color:var(--accent)}
 form .btn{width:100%}
