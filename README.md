@@ -6,7 +6,7 @@ Static portfolio site, hosted on GitHub Pages. No build step or dependencies.
 
 | File | Purpose |
 |------|---------|
-| `index.html` | The whole site (HTML, CSS and JS in one file) |
+| `index.html` | The home page (its CSS is inline; loads `config.js` and `site.js`) |
 | `photo.jpg` | **You add this**: your portrait (about 1200x1500 px, under 300 KB) |
 | `favicon.svg` | Browser tab icon (edit the initials) |
 | `404.html` | Custom "page not found" page |
@@ -14,7 +14,8 @@ Static portfolio site, hosted on GitHub Pages. No build step or dependencies.
 | `subscribe.html` | Mailing list sign-up page (saves to Google Sheet, then Stripe) |
 | `thanks.html` | Post-payment page (Stripe redirects here) |
 | `config.js` | **Edit this**: Stripe links, scheduler URL, sign-up endpoint |
-| `pages.css`, `site.js` | Shared styles and helpers for the new pages |
+| `pages.css`, `site.js` | Shared styles for the sub-pages; shared helpers (theme, consultation cards) for every page |
+| `theme-icon.svg` | Theme toggle icon (used as a CSS mask, so it follows the text colour) |
 | `apps-script/Code.gs` | Google Apps Script that writes sign-ups to a Sheet (CSV/Excel) |
 | `SETUP.md` | Step-by-step setup for payments, booking and the mailing list |
 | `robots.txt` | Search engine rules |

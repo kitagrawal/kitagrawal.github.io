@@ -16,13 +16,15 @@
   <div class="wrap">
     <nav>
       <a class="logo" href="index.html">Ankit<span>.</span>Agrawal</a>
-      <div class="links">
-        <a href="index.html#about">About</a>
+      <div class="navlinks">
+        <a href="index.html#letter">Letter</a>
+        <a href="index.html#advisory">Advisory</a>
         <a href="index.html#work">Work</a>
-        <a href="index.html#mentoring">Mentoring</a>
-        <a class="cta pill" href="book.html">Book<span class="xs-hide"> a consult</span></a>
-        <a class="cta pill solid" href="subscribe.html" aria-current="page">Newsletter</a>
-        <button class="theme" id="theme" aria-label="Toggle theme">◐</button>
+      </div>
+      <div class="links">
+        <a class="pill" href="book.html">Book<span class="xs-hide"> a session</span></a>
+        <a class="pill solid" href="subscribe.html" aria-current="page">Subscribe</a>
+        <button class="theme" id="theme" aria-label="Toggle theme"></button>
       </div>
     </nav>
   </div>
@@ -38,10 +40,11 @@
   </div>
 
   <section class="block">
-    <div class="wrap two-col">
+    <div class="wrap">
+    <div class="two-col">
       <div>
-        <div class="meta"><span class="price" id="nl-price"></span><span class="dur">billed monthly</span></div>
-        <ul class="perks" id="nl-perks"></ul>
+        <div class="price"><b id="nl-price"></b><span>per month<br>billed monthly</span></div>
+        <ol class="rows" id="nl-perks" style="margin-top:32px"></ol>
         <div class="terms">
           <h3>Subscription terms</h3>
           <ul class="perks" id="nl-terms"></ul>
@@ -75,6 +78,7 @@
           <p class="note" id="manage" hidden>Already subscribed? <a id="manage-link" href="#" rel="noopener">Manage or cancel your subscription</a>.</p>
         </form>
       </div>
+    </div>
     </div>
   </section>
 </main>
