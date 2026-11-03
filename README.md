@@ -16,6 +16,7 @@ Static portfolio site, hosted on GitHub Pages. No build step or dependencies.
 | `config.js` | **Edit this**: Stripe links, scheduler URL, sign-up endpoint |
 | `pages.css`, `site.js` | Shared styles and helpers for the new pages |
 | `apps-script/Code.gs` | Google Apps Script that writes sign-ups to a Sheet (CSV/Excel) |
+| `scripts/stripe-sync.mjs`, `.github/workflows/stripe-sync.yml` | Daily GitHub Action that copies newsletter subscription statuses from Stripe into the Sheet |
 | `SETUP.md` | Step-by-step setup for payments, booking and the mailing list |
 | `robots.txt` | Search engine rules |
 | `.nojekyll` | Tells GitHub Pages to serve files as-is |

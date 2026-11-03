@@ -1,12 +1,13 @@
 # Setup: bookings, payments and the mailing list
 
-Everything is static, so it deploys on GitHub Pages. Three outside services do the parts a static site can't. All have free tiers, and you only edit **`config.js`**.
+Everything is static, so it deploys on GitHub Pages. Three outside services do the parts a static site can't. All have free tiers. On the site you only edit **`config.js`**.
 
 | Need | Service | Cost |
 |------|---------|------|
 | Take payments | Stripe Payment Links | Per-transaction fee only |
 | Pick a time | Cal.com or Calendly | Free tier |
 | Store emails (CSV/Excel) | Google Sheet + Apps Script | Free |
+| Mark who paid, daily | GitHub Actions + a read-only Stripe key | Free |
 
 ## 1. Stripe (payments)
 
@@ -22,7 +23,7 @@ Everything is static, so it deploys on GitHub Pages. Three outside services do t
 5. **Cancel-anytime:** go to **Settings -> Billing -> Customer portal**, turn it on, and allow customers to **cancel subscriptions** (choose "at end of billing period" to match the terms on the page). Copy the portal's shareable login link into `config.js` -> `newsletter.manageUrl`. It appears as "Manage or cancel your subscription" on `subscribe.html` and `thanks.html`.
 6. **No refunds:** the page states payments are non-refundable and requires subscribers to tick a box acknowledging it. Don't issue refunds from Stripe unless you decide to make an exception. Some countries give consumers statutory cancellation or refund rights that a "no refunds" policy can't override, so check the rules where you sell.
 
-> Never put a Stripe *secret* key (`sk_...`) in this repo. Payment Links need none.
+> Never put a Stripe key in a repo file. Payment Links need none. The daily sync (section 4) uses a restricted read-only key stored as a GitHub Actions secret.
 
 ## 2. Scheduler (Cal.com or Calendly)
 
@@ -52,10 +53,26 @@ If you change `Code.gs` later, use **Deploy -> Manage deployments -> Edit -> New
 |--------|---------|
 | `pending_payment` | Email saved, visitor sent to Stripe checkout |
 | `returned_from_checkout` | Visitor reached the thank-you page after checkout. **Not proof of payment** |
+| `active`, `trialing`, `past_due`, `unpaid`, `paused`, `incomplete`, `incomplete_expired`, `canceled` | Set by the daily Stripe sync (section 4). This is Stripe's own subscription status |
 
-Stripe is the source of truth for who actually paid. Cross-check with **Stripe -> Customers -> Export**. (Automatic confirmation needs a server-side webhook, which a static site can't host.)
+Stripe is the source of truth for who actually paid. The daily sync copies its status into the Sheet. Until the next sync runs, a new subscriber shows `pending_payment` or `returned_from_checkout`.
 
-## 4. Deploy on GitHub Pages
+## 4. Daily Stripe sync (who actually paid)
+
+A GitHub Action (`.github/workflows/stripe-sync.yml`) runs `scripts/stripe-sync.mjs` once a day at about 06:17 UTC. It reads every subscription on the newsletter price from Stripe and sends each subscriber's status to the Apps Script. The Apps Script updates only rows whose email is already in the Sheet. A subscriber who changed their email at checkout is skipped, so look them up in Stripe.
+
+1. **Restricted key:** in Stripe, open **Developers -> API keys -> Create restricted key**. Give it **Read** on **Customers** and **Subscriptions** and nothing else. Start in test mode, then repeat in live mode when you go live. The script refuses a full `sk_` key.
+2. **Price ID:** open the newsletter product in Stripe and copy its monthly price ID (`price_...`).
+3. **Shared token:** make a long random string (for example `openssl rand -hex 32`).
+4. In the Apps Script editor, open **Project Settings -> Script Properties** and add `SYNC_TOKEN` = the token. Then publish a new version (**Deploy -> Manage deployments -> Edit -> New version**) so the live URL runs the sync code.
+5. In GitHub, open **Settings -> Secrets and variables -> Actions**:
+   - Secrets: `STRIPE_KEY` = the restricted key, `SHEET_SYNC_TOKEN` = the token.
+   - Variables: `NEWSLETTER_PRICE_ID` = the price ID.
+6. Test: open **Actions -> Stripe newsletter sync -> Run workflow**. The log prints counts only (the repo is public, so it never prints emails). For example: `Rows updated: 1. Not in Sheet: 0.`
+
+The Sheet URL comes from `signupEndpoint` in `config.js`, so there's nothing else to set. GitHub pauses scheduled workflows after 60 days with no repo activity, and emails you first. Re-enable it on the Actions tab.
+
+## 5. Deploy on GitHub Pages
 
 1. Put every file in this folder in the root of the repo `<your-username>.github.io` (branch `main`).
 2. **Settings -> Pages -> Deploy from a branch -> main -> / (root)**.
