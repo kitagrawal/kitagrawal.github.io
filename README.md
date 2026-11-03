@@ -28,15 +28,8 @@ Follow **SETUP.md**. Until `config.js` is filled in, the pages show a "setup nee
 
 ## Before you publish
 
-Search `index.html` for these placeholders and replace them:
-
-- `Your Name` (page title, logo, footer, photo alt text)
-- `YN` (initials shown until `photo.jpg` exists)
-- `you@example.com`
-- `https://www.linkedin.com/in/your-handle`
-- `https://github.com/your-username`
-
-Also update the initials in `favicon.svg` and the name in `404.html`.
+- Add `photo.jpg` next to `index.html` (the "AA" initials show until it exists).
+- Fill the `REPLACE` placeholders in `config.js` (see `SETUP.md`).
 
 ## Deploy to GitHub Pages
 
