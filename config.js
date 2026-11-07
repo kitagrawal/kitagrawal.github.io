@@ -31,9 +31,9 @@ window.SITE_CONFIG = {
   },
 
   /* ---- Newsletter ----
-     subscribeUrl: where every "Subscribe" button goes. Use your newsletter tool's
-     paid-subscribe page (recommended, so its subscriber list stays in sync with Stripe)
-     or a Stripe recurring Payment Link. Must start with https://. */
+     subscribeUrl: where every "Subscribe" button goes: your Buttondown subscribe page,
+     which runs Stripe checkout and keeps the subscriber list (see SETUP.md section 2).
+     Must start with https://. */
   newsletter: {
     price: "$7",   // text shown on the home page; "per month" is added there
     subscribeUrl: "https://buy.stripe.com/test_fZu8wP8pM7aU9LY8sB08g00"
