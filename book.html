@@ -24,7 +24,7 @@
       </div>
       <div class="links">
         <a class="pill" href="book.html" aria-current="page">Book<span class="xs-hide"> a session</span></a>
-        <a class="pill solid" href="subscribe.html">Subscribe</a>
+        <a class="pill solid" data-subscribe>Subscribe</a>
         <button class="theme" id="theme" aria-label="Toggle theme"></button>
       </div>
     </nav>
@@ -36,7 +36,7 @@
     <div class="wrap">
       <span class="mono">Consultations</span>
       <h1>Book an hour. Leave with a decision.</h1>
-      <p class="lead">A 60-minute GenAI &amp; Strategy Advisory session for founders and business leaders. Pay through Stripe, then choose a time that suits you.</p>
+      <p class="lead">A 60-minute GenAI &amp; Strategy Advisory session for founders and business leaders. Choose a time that suits you.</p>
     </div>
   </div>
 
@@ -45,13 +45,10 @@
       <div id="setup" class="setup" hidden></div>
       <div class="offers" id="offers"></div>
 
-      <div id="scheduler" class="embed" hidden></div>
-
       <h2 class="how">How it works</h2>
       <div class="steps">
         <div><h3>Bring a decision</h3><p>A use case, a pilot that stalled, or a build-versus-buy call. We start from value and risk.</p></div>
-        <div><h3>Pay securely</h3><p>Checkout is handled by Stripe. Your card details never touch this site.</p></div>
-        <div><h3>Pick a time</h3><p>After payment you're taken straight to my calendar to choose a slot.</p></div>
+        <div><h3>Pick a time</h3><p>Choose a slot on my calendar and you will get an invite by email.</p></div>
       </div>
       <p class="note" style="margin-top:28px">Need to reschedule or have a question first? Reach me on <a href="https://www.linkedin.com/in/peacefulhermit" target="_blank" rel="noopener">LinkedIn</a>.</p>
     </div>
@@ -69,19 +66,15 @@
 <script src="site.js"></script>
 <script>
 (function () {
-  const { cfg, embed, renderOffers } = window.Site;
-  const sched = document.getElementById('scheduler');
+  const { renderOffers } = window.Site;
   const setup = document.getElementById('setup');
 
-  const missing = renderOffers(document.getElementById('offers'), () => {
-    embed(sched, cfg.schedulerUrl);
-    sched.hidden = false;
-    sched.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const missing = renderOffers(document.getElementById('offers'));
   });
 
   if (missing) {
     setup.hidden = false;
-    setup.textContent = 'Setup needed: add your Stripe Payment Links and scheduler URL in config.js (see SETUP.md). Visitors will see "Coming soon" until then.';
+    setup.textContent = 'Setup needed: add your Cal.com link (cal.bookLink) in config.js (see SETUP.md). The button shows "Coming soon" until then.';
   }
 })();
 </script>

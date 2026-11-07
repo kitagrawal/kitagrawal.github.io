@@ -1,5 +1,5 @@
 /* Styles only for index.html. Load after base.css, which holds tokens, header, buttons,
-   offers, price, rows and footer. Sections below follow the page top to bottom. */
+   offers, price and footer. Sections below follow the page top to bottom. */
 
 /* ---------- page frame ---------- */
 html{scroll-padding-top:87px}
