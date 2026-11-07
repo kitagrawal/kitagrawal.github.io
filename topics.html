@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Request a Topic — Ankit Agrawal(Kit)</title>
+<meta name="description" content="Tell Ankit Agrawal(Kit) what The Applied AI Letter should cover next. Vote for a topic or suggest your own.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="pages.css">
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <nav>
+      <a class="logo" href="index.html">Ankit Agrawal<span>(Kit)</span></a>
+      <div class="navlinks">
+        <a href="index.html#letter">Letter</a>
+        <a href="index.html#advisory">Advisory</a>
+        <a href="index.html#work">Work</a>
+      </div>
+      <div class="links">
+        <a class="pill" href="book.html">Book<span class="xs-hide"> a session</span></a>
+        <a class="pill solid" data-subscribe>Subscribe</a>
+        <button class="theme" id="theme" aria-label="Toggle theme"></button>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="page-hero">
+    <div class="wrap">
+      <span class="mono">Topic requests</span>
+      <h1>What should I write about next?</h1>
+      <p class="lead">Vote for the topics you want covered in The Applied AI Letter, or suggest your own. The most requested topic goes to the top of my list.</p>
+    </div>
+  </div>
+
+  <section class="block">
+    <div class="wrap">
+      <div class="panel narrow">
+        <div id="setup" class="setup" hidden></div>
+        <form id="form" novalidate>
+          <fieldset>
+            <legend>Pick any that interest you</legend>
+            <div id="topic-list" class="choices"></div>
+          </fieldset>
+          <label>Something else? (optional)
+            <textarea name="suggestion" rows="3" maxlength="300" placeholder="A question you want answered, or a problem you are working on"></textarea>
+          </label>
+          <label>Email (optional)
+            <input type="email" name="email" autocomplete="email" maxlength="254" placeholder="you@example.com">
+            <span class="hint">Only if you want a reply when I write about it. One vote counts per email.</span>
+          </label>
+          <!-- honeypot: real visitors never see or fill this; Formspree drops submissions that fill it -->
+          <div class="hp" aria-hidden="true">
+            <label>Leave empty <input type="text" name="_gotcha" tabindex="-1" autocomplete="off"></label>
+          </div>
+          <button class="btn primary" type="submit" id="submit">Send my request →</button>
+          <div id="msg" class="msg" role="status" aria-live="polite" hidden></div>
+        </form>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© <span id="year">2026</span> Ankit Agrawal(Kit)</span>
+    <a href="index.html">← Back to home</a>
+  </div>
+</footer>
+
+<script src="config.js"></script>
+<script src="site.js"></script>
+<script>
+(function () {
+  const { cfg } = window.Site;
+  const t = cfg.topics || {};
+  const $ = id => document.getElementById(id);
+  const form = $('form'), submit = $('submit'), msg = $('msg');
+  const endpoint = typeof t.formEndpoint === 'string' ? t.formEndpoint.trim() : '';
+  const ready = /^https:\/\//i.test(endpoint) && !/REPLACE/i.test(endpoint);
+
+  (t.list || []).forEach((topic, i) => {
+    const label = document.createElement('label');
+    label.className = 'check';
+    const box = document.createElement('input');
+    box.type = 'checkbox'; box.name = 'topic'; box.value = topic; box.id = 'topic-' + i;
+    const text = document.createElement('span');
+    text.textContent = topic;
+    label.append(box, text);
+    $('topic-list').appendChild(label);
+  });
+
+  function show(kind, text) {
+    msg.hidden = false;
+    msg.className = 'msg ' + kind;
+    msg.textContent = text;
+  }
+
+  if (!ready) {
+    $('setup').hidden = false;
+    $('setup').textContent = 'Setup needed: add your Formspree form URL (topics.formEndpoint) in config.js (see SETUP.md). Requests are disabled until then.';
+    submit.disabled = true;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!ready) return;
+    const fd = new FormData(form);
+    const picked = fd.getAll('topic');
+    const suggestion = String(fd.get('suggestion') || '').trim();
+    const email = String(fd.get('email') || '').trim().toLowerCase();
+    if (!picked.length && !suggestion) return show('err', 'Pick at least one topic or write your own.');
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return show('err', 'Please enter a valid email address, or leave it empty.');
+
+    // One "topics" field, " | "-separated, so each request is one row in the CSV export.
+    const body = new FormData();
+    body.set('topics', picked.join(' | '));
+    body.set('suggestion', suggestion);
+    if (email) body.set('email', email);
+    body.set('_gotcha', String(fd.get('_gotcha') || ''));
+    body.set('_subject', 'Topic request');
+
+    submit.disabled = true;
+    const original = submit.textContent;
+    submit.textContent = 'Sending…';
+    try {
+      const res = await fetch(endpoint, { method: 'POST', body, headers: { Accept: 'application/json' } });
+      if (!res.ok) throw new Error(String(res.status));
+      form.reset();
+      show('ok', 'Thanks, your request is in. The most requested topics are the ones I write about first.');
+    } catch (err) {
+      show('err', 'Could not send your request. Check your connection and try again.');
+    } finally {
+      submit.disabled = false;
+      submit.textContent = original;
+    }
+  });
+})();
+</script>
+</body>
+</html>
