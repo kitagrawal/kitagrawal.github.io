@@ -1,4 +1,4 @@
-# Setup: bookings and newsletter
+# Setup: bookings, newsletter and topic requests
 
 Everything is static and deploys on GitHub Pages. You only edit **`config.js`**.
 
@@ -25,7 +25,27 @@ Subscribers cancel through the Unsubscribe link in every letter; for a paid subs
 
 Buttondown's list is the source of truth for who gets the letter, and Stripe is the source of truth for who paid. Do not keep a second subscriber list in this repo or in a Sheet.
 
-## 3. Deploy on GitHub Pages
+## 3. Topic requests (Formspree)
+
+`topics.html` lets visitors vote for topics from `topics.list` in `config.js` and suggest their own. Requests go to a Formspree form.
+
+1. Sign up at formspree.io and create a form. Copy its endpoint (`https://formspree.io/f/<id>`) into `topics.formEndpoint`.
+2. In the form's settings, add your site's domain under **Restrict to domain** so other sites can't post to it.
+3. Edit `topics.list` to the topics you are weighing. Keep the wording fixed once votes come in: the ranking counts by the exact text.
+
+While `formEndpoint` contains `REPLACE`, the page shows "Setup needed" and the button is disabled.
+
+**Find the most requested topic.** In Formspree open the form, choose **Export -> CSV**, then run:
+
+```bash
+node scripts/rank-topics.mjs ~/Downloads/<export>.csv
+```
+
+It prints each topic's votes and share of requests, groups similar free-text suggestions, and names the most requested topic. A person who gives the same email more than once counts once (their latest request). Keep the export out of the repo: it holds emails, and the repo is public (`.gitignore` skips `*.csv`).
+
+Formspree's free plan accepts 50 submissions a month. Past that, upgrade, or point `formEndpoint` at another service that takes a form POST and returns JSON (Getform, Basin).
+
+## 4. Deploy on GitHub Pages
 
 1. Put every file in the root of the repo `<your-username>.github.io` (branch `main`).
 2. **Settings -> Pages -> Deploy from a branch -> main -> / (root)**.

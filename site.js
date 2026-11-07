@@ -1,4 +1,4 @@
-/* Shared helpers for index.html, book.html, unsubscribe.html and 404.html */
+/* Shared helpers for index.html, book.html, topics.html, unsubscribe.html and 404.html */
 (function () {
   const root = document.documentElement;
 

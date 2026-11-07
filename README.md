@@ -10,6 +10,8 @@ Static portfolio site, hosted on GitHub Pages. No build step or dependencies.
 | `photo.jpg` | **You add this**: your portrait (about 1200x1500 px, under 300 KB) |
 | `favicon.svg` | Browser tab icon (edit the initials) |
 | `404.html` | Custom "page not found" page (shares `base.css` and `pages.css`; every URL is root-absolute because GitHub Pages serves it at any missing path) |
+| `topics.html` | Topic requests: visitors vote for topics from `config.js` or suggest their own; sent to Formspree |
+| `scripts/rank-topics.mjs` | Ranks topic requests from a Formspree CSV export (`node scripts/rank-topics.mjs export.csv`) |
 | `book.html` | Consultation booking page (Cal.com popup) |
 | `unsubscribe.html` | How to leave The Applied AI Letter and stop billing (not linked from the site and marked `noindex`; reached only from the link in each letter. Buttondown does the unsubscribing) |
 | `config.js` | **Edit this**: Cal.com link and newsletter subscribe URL |

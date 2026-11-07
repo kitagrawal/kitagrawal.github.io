@@ -37,5 +37,23 @@ window.SITE_CONFIG = {
   newsletter: {
     price: "$7",   // text shown on the home page; "per month" is added there
     subscribeUrl: "https://buy.stripe.com/fZu8wP8pM7aU9LY8sB08g00"
+  },
+
+  /* ---- Topic requests (topics.html) ----
+     formEndpoint: a Formspree form URL ("https://formspree.io/f/<id>"). Formspree stores
+     each request; export them as CSV and rank with scripts/rank-topics.mjs (see SETUP.md).
+     list: the topics visitors can vote for. Edit freely; the ranking counts by this text.
+     Leave "REPLACE" in formEndpoint and the form stays disabled. */
+  topics: {
+    formEndpoint: "REPLACE_WITH_FORMSPREE_FORM_URL",
+    list: [
+      "Is AI a bubble? Where the value is, and where it isn't",
+      "Choosing a first GenAI project that pays back",
+      "Agentic workflows that survive production",
+      "Evaluating LLM output before you ship it",
+      "Machine learning in lending and credit risk",
+      "Taking a model from notebook to production on AWS",
+      "Machine learning in healthcare and public health"
+    ]
   }
 };

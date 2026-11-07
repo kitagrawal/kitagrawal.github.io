@@ -1,4 +1,4 @@
-/* Styles only for book.html, unsubscribe.html and 404.html.
+/* Styles only for book.html, topics.html, unsubscribe.html and 404.html.
    Load after base.css, which holds tokens, header, buttons, offers, price and footer. */
 
 /* ---------- page frame: footer sticks to the bottom ---------- */
@@ -25,11 +25,32 @@ section.block{padding:40px 0 72px}
 /* ---------- setup notice ---------- */
 .setup{border:1px dashed var(--warm);border-radius:var(--radius);padding:16px 20px;color:var(--warm);font-size:15px;margin-bottom:20px;background:color-mix(in srgb,var(--warm) 8%,transparent)}
 
+/* ---------- forms (topics.html) ---------- */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:32px}
+.panel.narrow{max-width:640px}
+form{display:grid;gap:20px}
+fieldset{border:0;display:grid;gap:4px}
+legend{font-size:14px;font-weight:500;margin-bottom:8px}
+.choices{display:grid;gap:4px}
+label{font-size:14px;font-weight:500;line-height:1.5;display:grid;gap:8px}
+input[type=email],input[type=text],textarea{width:100%;padding:13px 16px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:400 17px/1.65 'Inter',system-ui,sans-serif}
+textarea{resize:vertical}
+input::placeholder,textarea::placeholder{color:var(--muted)}
+input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:-1px}
+.check{display:flex;gap:10px;align-items:flex-start;font-weight:400;color:var(--ink);font-size:15px;line-height:1.65;padding:6px 0;cursor:pointer}
+.check input{margin-top:6px;width:16px;height:16px;flex:none;accent-color:var(--accent)}
+.hint{font-weight:400;color:var(--muted);font-size:13px}
+form .btn{width:100%}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.msg{padding:12px 16px;border-radius:10px;font-size:15px}
+.msg.err{background:color-mix(in srgb,var(--warm) 14%,transparent);color:var(--warm);border:1px solid var(--warm)}
+.msg.ok{background:var(--accent-soft);color:var(--accent);border:1px solid var(--accent)}
 
 /* ---------- responsive and motion ---------- */
 @media(max-width:600px){
   .page-hero{padding:40px 0 32px}
   .btns .btn{width:100%}
   .offer{padding:24px}
+  .panel{padding:24px}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn{transition:none}}
