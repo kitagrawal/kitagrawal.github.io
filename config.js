@@ -1,12 +1,11 @@
 /*
  * SITE CONFIGURATION: the only file you need to edit to go live with
- * bookings and the mailing list. See SETUP.md for step-by-step instructions.
+ * bookings and subscriptions. See SETUP.md for step-by-step instructions.
  *
  * Anything still containing "REPLACE" is treated as "not set up yet", and the
  * pages show a friendly notice instead of a broken link.
  *
- * None of these values are secrets. Stripe Payment Links and Apps Script URLs
- * are designed to be public. NEVER put a Stripe secret key (sk_...) here.
+ * None of these values are secrets. Cal.com links are public.
  */
 window.SITE_CONFIG = {
 
@@ -17,33 +16,26 @@ window.SITE_CONFIG = {
       id: "advisory",
       name: "GenAI & Strategy Advisory",
       duration: "60 min",
-      price: "$120",   // text shown on the page; set the same amount on the Stripe Payment Link
-      description: "For founders and business leaders: where GenAI and agentic workflows create value, what to build first, and how to avoid costly pilots.",
-      stripeLink: "REPLACE_WITH_STRIPE_PAYMENT_LINK_FOR_ADVISORY"
+      price: "$120",   // text shown on the page; set the same amount on the Cal.com event (if Cal.com collects payment)
+      description: "For founders and business leaders: where GenAI and agentic workflows create value, what to build first, and how to avoid costly pilots."
     }
   ],
 
-  /* Scheduler used to pick a time. A Cal.com or Calendly event URL.
-     Shown after payment (thanks.html). If a consultation has no stripeLink,
-     its button opens the scheduler directly (use this with Cal.com's built-in
-     Stripe payments instead). */
-  schedulerUrl: "REPLACE_WITH_CAL_COM_OR_CALENDLY_EVENT_URL",
-
-  /* ---- Mailing list (subscribe.html) ---- */
-  newsletter: {
-    name: "The Applied AI Letter",
-    price: "$7",   // monthly amount; pages add "per month". Billed monthly, auto-renewing, cancel anytime
-    description: "Practical notes on applied ML, GenAI and AWS, plus early updates on what I'm building.",
-    perks: [
-      "Hands-on write-ups from real banking and healthcare ML work",
-      "Agentic workflow patterns that survive production",
-      "Early access to my contact tracing venture updates"
-    ],
-    stripeLink: "REPLACE_WITH_STRIPE_SUBSCRIPTION_PAYMENT_LINK",   // REQUIRED: a recurring monthly Payment Link. The list is paid-only; sign-ups stay disabled until this is set.
-    manageUrl: "REPLACE_WITH_STRIPE_CUSTOMER_PORTAL_LINK"           // where subscribers cancel/manage (Stripe customer portal)
+  /* ---- Cal.com popup booking ----
+     "Book an appointment" (index.html) and "Pick a time" (book.html) open this event in a popup.
+     Format is "<cal-username>/<event-slug>", e.g. "ankit-agrawal/advisory".
+     Leave "REPLACE" in it and the buttons show "Coming soon". */
+  cal: {
+    origin: "https://app.cal.com",                       // use "https://cal.eu" if your account is on the EU server
+    bookLink: "REPLACE_WITH_CAL_USERNAME/EVENT_SLUG"
   },
 
-  /* Google Apps Script web app URL that appends sign-ups to your Google Sheet
-     (downloadable as CSV or Excel). Code is in apps-script/Code.gs. */
-  signupEndpoint: "REPLACE_WITH_APPS_SCRIPT_WEB_APP_URL"
+  /* ---- Newsletter ----
+     subscribeUrl: where every "Subscribe" button goes. Use your newsletter tool's
+     paid-subscribe page (recommended, so its subscriber list stays in sync with Stripe)
+     or a Stripe recurring Payment Link. Must start with https://. */
+  newsletter: {
+    price: "$7",   // text shown on the home page; "per month" is added there
+    subscribeUrl: "REPLACE_WITH_SUBSCRIBE_URL"
+  }
 };

@@ -28,8 +28,6 @@
         <a href="#contact">Contact</a>
       </div>
       <div class="links">
-        <!-- <a class="pill" href="book.html">Book<span class="xs-hide"> a session</span></a>
-        <a class="pill solid" href="subscribe.html">Subscribe</a> -->
         <button class="theme" id="theme" aria-label="Toggle theme"></button>
       </div>
     </nav>
@@ -46,10 +44,6 @@
           <span class="mono">Founder · Senior data scientist · AI mentor</span>
           <h1>Turning machine learning into decisions that ship.</h1>
           <p class="sub">I help founders and leaders decide where AI create value, what to build first, and how to avoid costly pilots. I have taken ML for banking and healthcare from notebook to monitored production.</p>
-          <!-- <div class="btns">
-            <a class="btn primary" href="subscribe.html">Subscribe to The Applied AI Letter</a>
-            <a class="btn" href="book.html">Book a strategy session</a>
-          </div> -->
           <span class="label"></span>
         </div>
         <!-- Put your photo in the same folder as index.html and name it photo.jpg -->
@@ -88,8 +82,8 @@
           <p class="sub">Is AI a bubble? Learn more about impacts and implications. 5-7 letters a month.</p>
           <div class="price"><b class="nl-price">$7</b><span class="label">per month<br>cancel anytime</span></div>
           <div class="pane-body">
-            <a class="btn primary" href="subscribe.html">Subscribe to The Applied AI Letter</a>
-            <p class="note">Secure checkout through Stripe. Billed monthly, renews automatically.</p>
+            <a class="btn primary" data-subscribe>Subscribe to The Applied AI Letter</a>
+            <p class="note">Secure checkout through Stripe. Billed monthly, cancel anytime.</p>
           </div>
         </div>
 
@@ -102,8 +96,8 @@
           </div>
           <div class="price"><b id="consult-price">$120</b><span class="label">per session<br><span id="consult-duration">60 min</span></span></div>
           <div class="pane-body">
-            <a class="btn primary" href="book.html">Book an appointment</a>
-            <p class="note">Secure checkout through Stripe. You pick a time right after paying.</p>
+            <button class="btn primary" type="button" data-cal-book>Book an appointment</button>
+            <p class="note">You pick a time on my calendar.</p>
           </div>
         </div>
       </div>

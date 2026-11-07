@@ -1,5 +1,5 @@
 /* Shared by every page. Figma kit "05 · Teal, Refined".
-   Page-specific styles live in index.css (home) and pages.css (book, subscribe, thanks, 404). */
+   Page-specific styles live in index.css (home) and pages.css (book, 404). */
 
 /* ---------- tokens ---------- */
 :root{
@@ -58,7 +58,7 @@ nav{display:flex;align-items:center;justify-content:space-between;gap:16px;paddi
 .btn{display:inline-flex;align-items:center;justify-content:center;padding:16px 28px;border-radius:999px;font:600 16px/1.5 'Inter',system-ui,sans-serif;text-decoration:none;border:1px solid var(--ink);transition:transform .15s;background:none;color:var(--ink);cursor:pointer}
 .btn:hover{transform:translateY(-2px)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-.btn[disabled],.btn.disabled{opacity:.5;cursor:not-allowed;transform:none;pointer-events:none}
+.btn[disabled],.btn.disabled,.links a.pill.disabled{opacity:.5;cursor:not-allowed;transform:none;pointer-events:none}
 
 /* ---------- shared components ---------- */
 /* consultation cards (drawn from config.js by site.js) */
@@ -76,10 +76,6 @@ nav{display:flex;align-items:center;justify-content:space-between;gap:16px;paddi
 .price b{font-family:'Fraunces',serif;font-weight:600;font-size:56px;line-height:1;letter-spacing:-.01em}
 .price span{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:12px;line-height:1.5;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 
-/* numbered rows ("what you get") */
-.rows{list-style:none;counter-reset:r}
-.rows li{counter-increment:r;display:flex;gap:20px;padding:18px 0;border-top:1px solid var(--line);font-size:19px;line-height:1.6}
-.rows li::before{content:counter(r,decimal-leading-zero);font-family:'JetBrains Mono',monospace;font-weight:500;font-size:13px;line-height:1.5;color:var(--accent);padding-top:5px}
 
 /* ---------- footer ---------- */
 footer{border-top:1px solid var(--line);padding:28px 0;color:var(--muted);font-size:14px}

@@ -10,21 +10,17 @@ Static portfolio site, hosted on GitHub Pages. No build step or dependencies.
 | `photo.jpg` | **You add this**: your portrait (about 1200x1500 px, under 300 KB) |
 | `favicon.svg` | Browser tab icon (edit the initials) |
 | `404.html` | Custom "page not found" page (shares `base.css` and `pages.css`; every URL is root-absolute because GitHub Pages serves it at any missing path) |
-| `book.html` | Consultation booking page (Stripe payment + scheduler) |
-| `subscribe.html` | Mailing list sign-up page (saves to Google Sheet, then Stripe) |
-| `thanks.html` | Post-payment page (Stripe redirects here) |
-| `config.js` | **Edit this**: Stripe links, scheduler URL, sign-up endpoint |
+| `book.html` | Consultation booking page (Cal.com popup) |
+| `config.js` | **Edit this**: Cal.com link and newsletter subscribe URL |
 | `base.css` | Styles every page shares: colour tokens, header, buttons, consultation cards, price, rows, footer |
-| `index.css`, `pages.css` | Page-specific styles: `index.css` for the home page, `pages.css` for book, subscribe, thanks and 404 |
+| `index.css`, `pages.css` | Page-specific styles: `index.css` for the home page, `pages.css` for book and 404 |
 | `site.js`, `home.js` | `site.js` is the shared helpers (theme, consultation cards) for every page; `home.js` is the home page's own script |
 | `theme-icon.svg` | Theme toggle icon (used as a CSS mask, so it follows the text colour) |
-| `apps-script/Code.gs` | Google Apps Script that writes sign-ups to a Sheet (CSV/Excel) |
-| `scripts/stripe-sync.mjs`, `.github/workflows/stripe-sync.yml` | Daily GitHub Action that copies newsletter subscription statuses from Stripe into the Sheet |
-| `SETUP.md` | Step-by-step setup for payments, booking and the mailing list |
+| `SETUP.md` | Step-by-step Cal.com and newsletter setup |
 | `robots.txt` | Search engine rules |
 | `.nojekyll` | Tells GitHub Pages to serve files as-is |
 
-## Bookings, payments and mailing list
+## Bookings and newsletter
 
 Follow **SETUP.md**. Until `config.js` is filled in, the pages show a "setup needed" notice instead of broken links.
 
