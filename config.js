@@ -27,7 +27,7 @@ window.SITE_CONFIG = {
      Leave "REPLACE" in it and the buttons show "Coming soon". */
   cal: {
     origin: "https://app.cal.com",                       // use "https://cal.eu" if your account is on the EU server
-    bookLink: "REPLACE_WITH_CAL_USERNAME/EVENT_SLUG"
+    bookLink: "https://cal.com/appliedailetter/60min"
   },
 
   /* ---- Newsletter ----
@@ -36,6 +36,6 @@ window.SITE_CONFIG = {
      or a Stripe recurring Payment Link. Must start with https://. */
   newsletter: {
     price: "$7",   // text shown on the home page; "per month" is added there
-    subscribeUrl: "REPLACE_WITH_SUBSCRIBE_URL"
+    subscribeUrl: "https://buy.stripe.com/test_fZu8wP8pM7aU9LY8sB08g00"
   }
 };
