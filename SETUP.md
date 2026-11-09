@@ -21,7 +21,7 @@ Buttondown keeps the subscriber list, sends the letters, runs checkout through y
 5. Copy your newsletter's public subscribe page link from Buttondown into `newsletter.subscribeUrl`. It must start with `https://`.
 6. Test with a real card: Buttondown does not support Stripe test mode, so subscribe once yourself, then refund and cancel it in Stripe.
 
-Subscribers cancel through the link in every letter, or in Stripe's **Settings -> Billing -> Customer portal** if you turn it on. While `subscribeUrl` contains `REPLACE`, the Subscribe buttons are greyed out.
+Subscribers cancel through the Unsubscribe link in every letter; for a paid subscriber that also stops billing at the end of the current period ([docs](https://docs.buttondown.com/paid-subscriptions)). `unsubscribe.html` explains this to readers and is linked from the home-page footer. Buttondown no longer lets you redirect its unsubscribe confirmation to your own page, so readers land on Buttondown's page after they click the link. While `subscribeUrl` contains `REPLACE`, the Subscribe buttons are greyed out.
 
 Buttondown's list is the source of truth for who gets the letter, and Stripe is the source of truth for who paid. Do not keep a second subscriber list in this repo or in a Sheet.
 
