@@ -11,13 +11,14 @@ Static portfolio site, hosted on GitHub Pages. No build step or dependencies.
 | `favicon.svg` | Browser tab icon (edit the initials) |
 | `404.html` | Custom "page not found" page (shares `base.css` and `pages.css`; every URL is root-absolute because GitHub Pages serves it at any missing path) |
 | `book.html` | Consultation booking page (Cal.com popup) |
-| `unsubscribe.html` | How to leave The Applied AI Letter and stop billing (not linked from the site and marked `noindex`; reached only from the link in each letter) |
-| `config.js` | **Edit this**: Cal.com link and newsletter subscribe URL |
+| `unsubscribe.html` | Leave The Applied AI Letter: reached only from the signed link in each letter (`?c=&t=`; not linked from the site, marked `noindex`). The reader confirms their email and the `UnsubscribeUser` Lambda stops letters and cancels at period end |
+| `config.js` | **Edit this**: Cal.com link, newsletter subscribe URL and the unsubscribe API URL |
 | `base.css` | Styles every page shares: colour tokens, header, buttons, consultation cards, price, rows, footer |
 | `index.css`, `pages.css` | Page-specific styles: `index.css` for the home page, `pages.css` for book, unsubscribe and 404 |
 | `site.js`, `home.js` | `site.js` is the shared helpers (theme, consultation cards) for every page; `home.js` is the home page's own script |
 | `theme-icon.svg` | Theme toggle icon (used as a CSS mask, so it follows the text colour) |
 | `SETUP.md` | Step-by-step Cal.com and newsletter setup |
+| `newsletter/` | AWS Lambdas for the paid newsletter (us-east-2, `newsletter` profile): `stripe-sync` (the one webhook and the nightly reconcile), `unsubscribe-user`, shared `lib.mjs` and `rules.mjs` (pure, tested with `node --test newsletter/*.test.mjs`), `deploy.sh` to push code changes, one-off `setup-dynamodb.sh`, `setup-reconcile.sh` and `setup-unsubscribe.sh`, and `link.sh` to print a test unsubscribe link. Not part of the site; see `docs/newsletter-ses/PLAN.md` |
 | `robots.txt` | Search engine rules |
 | `.nojekyll` | Tells GitHub Pages to serve files as-is |
 

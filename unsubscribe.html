@@ -4,8 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Unsubscribe — Ankit Agrawal(Kit)</title>
-<meta name="description" content="How to unsubscribe from The Applied AI Letter and stop a paid subscription.">
+<meta name="description" content="Unsubscribe from The Applied AI Letter.">
 <meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,46 +15,68 @@
 <link rel="stylesheet" href="pages.css">
 </head>
 <body>
+<!-- Hidden page: nothing links here. The letter's Unsubscribe link opens it as
+     unsubscribe.html?c=<customer id>&t=<token>. The reader types their email and the page
+     posts { c, t, email } to cfg.newsletter.unsubscribeApiUrl (API Gateway → UnsubscribeUser,
+     which checks the token and the email against DynamoDB, then cancels in Stripe). -->
 <header>
   <div class="wrap">
     <nav>
       <a class="logo" href="index.html">Ankit Agrawal<span>(Kit)</span></a>
-      <div class="navlinks">
-        <a href="index.html#letter">Letter</a>
-        <a href="index.html#advisory">Advisory</a>
-        <a href="index.html#work">Work</a>
-      </div>
-      <div class="links">
-        <a class="pill" href="book.html">Book<span class="xs-hide"> a session</span></a>
-        <a class="pill solid" data-subscribe>Subscribe</a>
-        <button class="theme" id="theme" aria-label="Toggle theme"></button>
-      </div>
+      <button class="theme" id="theme" aria-label="Toggle theme"></button>
     </nav>
   </div>
 </header>
 
 <main>
-  <div class="page-hero">
+  <section class="unsub" id="unsub" data-state="nolink">
     <div class="wrap">
-      <span class="mono">The Applied AI Letter · Unsubscribe</span>
-      <h1>Unsubscribe in one click.</h1>
-      <p class="lead">Every letter has a one-click unsubscribe link. If you already used it, you are done: no more letters will arrive. Thank you for reading.</p>
-    </div>
-  </div>
 
-  <section class="block">
-    <div class="wrap">
-      <h2 class="how">How it works</h2>
-      <div class="steps">
-        <div><h3>Use the link in any letter</h3><p>Every letter ends with an Unsubscribe link. One click takes you off the list.</p></div>
-        <div><h3>Billing stops too</h3><p>If you pay for the letter, unsubscribing also cancels the plan. You are not charged again after the current period.</p></div>
-        <div><h3>Changed your mind?</h3><p>You can subscribe again at any time with the button below.</p></div>
+      <!-- ready / sending / error: the form -->
+      <div class="unsub-step" data-show="ready">
+        <h1>Unsubscribe</h1>
+        <p class="lead">Type the email address The Applied AI Letter was sent to. That confirms it is you, and the letters stop.</p>
+
+        <form class="unsub-form" id="unsub-form" novalidate>
+          <label for="email">Email address</label>
+          <div class="unsub-row">
+            <input id="email" name="email" type="email" inputmode="email" autocomplete="email"
+                   autocapitalize="off" spellcheck="false" required aria-describedby="email-msg">
+            <button class="btn primary" type="submit">Unsubscribe</button>
+          </div>
+          <p class="unsub-msg" id="email-msg" role="alert"></p>
+        </form>
+
+        <ul class="unsub-facts">
+          <li><strong>Letters stop now.</strong> No more issues after you confirm.</li>
+          <li><strong>Billing stops too.</strong> A paid plan ends at the close of the current period, and you are not charged again.</li>
+        </ul>
       </div>
-      <div class="btns">
-        <a class="btn primary" data-subscribe>Subscribe again</a>
-        <a class="btn" href="index.html">Back to home</a>
+
+      <!-- done -->
+      <div class="unsub-step unsub-done" data-show="done" tabindex="-1" id="done">
+        <svg class="unsub-mark" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22"/><path d="M15 24.5l6 6 12-13"/></svg>
+        <h1>You are unsubscribed</h1>
+        <p class="lead">No more letters will arrive, and you will not be charged again. Thank you for reading.</p>
+        <div class="btns">
+          <a class="btn" href="index.html">Back to home</a>
+          <a class="btn quiet" data-subscribe>Changed your mind? Subscribe again</a>
+        </div>
       </div>
-      <p class="note" style="margin-top:28px">Cannot find a letter, or still see a charge? Message me on <a href="https://www.linkedin.com/in/peacefulhermit" target="_blank" rel="noopener">LinkedIn</a> and I will take you off the list.</p>
+
+      <!-- nolink: opened without the letter's link, or with a bad one -->
+      <div class="unsub-step" data-show="nolink">
+        <h1>Unsubscribe from a letter</h1>
+        <p class="lead" id="nolink-text">Open the Unsubscribe link at the bottom of any letter. It brings you back here with your address ready to confirm.</p>
+      </div>
+
+      <!-- off: unsubscribeApiUrl not set in config.js -->
+      <div class="unsub-step" data-show="off">
+        <h1>Unsubscribe from a letter</h1>
+        <p class="lead">Online unsubscribe is not switched on yet. Send me a message and I will take you off the list myself.</p>
+      </div>
+
+      <p class="unsub-help">Something not working, or still see a charge? Message me on <a href="https://www.linkedin.com/in/peacefulhermit" target="_blank" rel="noopener">LinkedIn</a> and I will take you off the list.</p>
     </div>
   </section>
 </main>
@@ -67,5 +90,56 @@
 
 <script src="config.js"></script>
 <script src="site.js"></script>
+<script>
+(function () {
+  const q = new URLSearchParams(location.search);
+  const c = q.get('c'), t = q.get('t');
+  const url = (Site.cfg.newsletter || {}).unsubscribeApiUrl || '';
+  const root = document.getElementById('unsub');
+  const form = document.getElementById('unsub-form');
+  const input = document.getElementById('email');
+  const btn = form.querySelector('button');
+  const msg = document.getElementById('email-msg');
+  const show = s => { root.dataset.state = s; };
+  const fail = text => { msg.textContent = text; input.setAttribute('aria-invalid', 'true'); input.focus(); };
+  const clear = () => { msg.textContent = ''; input.removeAttribute('aria-invalid'); };
+
+  if (!c || !t) return show('nolink');
+  history.replaceState(null, '', location.pathname); // keep the token out of the address bar and history
+  if (!/^https:\/\//.test(url) || /REPLACE/i.test(url)) return show('off');
+  show('ready');
+
+  input.addEventListener('input', clear);
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const email = input.value.trim();
+    if (!email) return fail('Enter the email address the letter was sent to.');
+    if (!input.checkValidity()) return fail('That does not look like an email address. Check it and try again.');
+
+    clear();
+    btn.disabled = true; btn.textContent = 'Unsubscribing…'; root.setAttribute('aria-busy', 'true');
+    let res = null, body = {};
+    try {
+      res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ c, t, email }) });
+      body = await res.json().catch(() => ({}));
+    } catch (err) { /* network error: res stays null */ }
+    btn.disabled = false; btn.textContent = 'Unsubscribe'; root.removeAttribute('aria-busy');
+
+    if (res && res.ok) {
+      show('done');
+      document.getElementById('done').focus();
+    } else if (body.error === 'email') {
+      fail('That email does not match this letter. Use the address the letter was sent to.');
+    } else if (body.error === 'link') {
+      document.getElementById('nolink-text').textContent =
+        'This unsubscribe link is not valid. Open the Unsubscribe link in a recent letter, or message me and I will take you off the list.';
+      show('nolink');
+    } else {
+      fail('Something went wrong on my side, and you are not unsubscribed yet. Try again in a minute.');
+    }
+  });
+})();
+</script>
 </body>
 </html>

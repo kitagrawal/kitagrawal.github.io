@@ -17,9 +17,17 @@ Every Subscribe button (`data-subscribe`) goes to `newsletter.subscribeUrl`. Use
 - **A newsletter tool's paid-subscribe page** (recommended). Tools such as Buttondown, beehiiv or Ghost connect to your Stripe account, run checkout, and keep an up-to-date list of active subscribers for you.
 - **A plain Stripe recurring Payment Link.** Works for taking money, but Stripe is then the only subscriber list, and you must email subscribers from an export.
 
-For either: in Stripe, enable **Settings -> Billing -> Customer portal** so subscribers can cancel themselves. Keep `newsletter.price` in `config.js` equal to the real price. While `subscribeUrl` contains `REPLACE`, the Subscribe buttons are greyed out.
+Keep `newsletter.price` in `config.js` equal to the real price. While `subscribeUrl` contains `REPLACE`, the Subscribe buttons are greyed out.
 
-`unsubscribe.html` explains unsubscribing to readers. No page on the site links to it and it is marked `noindex`, so readers reach it only from the letters: put a link to `https://<your-site>/unsubscribe.html` in the letter footer, next to the Unsubscribe link. Do not list it in `robots.txt`, which is public and would stop search engines seeing the `noindex`.
+`unsubscribe.html` is where readers unsubscribe. Nothing on the site links to it and it is marked `noindex`; readers reach it only from the Unsubscribe link in a letter, which looks like `https://<your-site>/unsubscribe.html?c=<Stripe customer id>&t=<token>`. The reader types the email the letter was sent to, and the page posts `{ c, t, email }` to the `UnsubscribeUser` Lambda. The Lambda checks the token, checks the email against the subscribers table, then cancels the newsletter subscription in Stripe at the end of the paid period and stops letters at once. The reader never signs in to Stripe. Without `c` and `t` the page shows no form. To turn it on:
+
+1. Run `newsletter/setup-unsubscribe.sh` (once). It prints the API URL.
+2. Put that URL into `newsletter.unsubscribeApiUrl` in `config.js`. While it contains `REPLACE`, the form is disabled.
+3. Test with a link from `newsletter/link.sh <cus_id> http://localhost:8000/unsubscribe.html` under `python3 -m http.server`.
+
+The token is `base64url(HMAC-SHA256(key, customer id))` (`unsubscribeToken` in `newsletter/rules.mjs`), so nobody can unsubscribe someone else. Letters also carry the one-click mail headers that `setup-unsubscribe.sh` prints. Do not list `unsubscribe.html` in `robots.txt`, which is public and would stop search engines seeing the `noindex`.
+
+To unsubscribe a reader yourself, use the Stripe Dashboard: cancel the subscription, or set its metadata `email_opt_out` to `true`. `StripeSync` copies every change into DynamoDB. Stripe is the source of truth; never edit the table by hand.
 
 ## 3. Deploy on GitHub Pages
 

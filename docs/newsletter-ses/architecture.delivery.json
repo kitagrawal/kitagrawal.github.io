@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "746f0755-ed68-44c9-9655-fb6c81925362",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/Users/matthew/Desktop/Github/kitagrawal.github.io/docs/newsletter-ses/architecture.archify.json",
+  "output": "/Users/matthew/Desktop/Github/kitagrawal.github.io/docs/newsletter-ses/architecture.html",
+  "specification": {
+    "sha256": "71b5f92e97c2f14df3a68bf559f6796be85612d08b3d5fce39b9d963454bce94",
+    "bytes": 9433
+  },
+  "artifact": {
+    "sha256": "d369688218b5c5921f22024fdd284cc21351d033da1f560ccd3027d3b8ea6f68",
+    "bytes": 872679
+  }
+}
