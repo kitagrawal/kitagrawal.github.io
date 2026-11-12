@@ -107,9 +107,9 @@ Each step can ship on its own.
 
 None for the site. When the system is live, rewrite the newsletter section of `SETUP.md` to describe Stripe + SES instead of a newsletter tool.
 
-## Open decisions
+## Decisions (2026-11-11)
 
-- Which domain sends the letters.
-- What one-click unsubscribe does to billing (proposed: cancel at period end).
-- Where the Lambda code and SAM template live. GitHub Pages serves every file in this repo, so a separate private repo keeps infrastructure out of the website.
-- Whether PR #7 (Buttondown docs) closes as replaced by this plan.
+- **Sending domain**: buy a domain for the letter. It is step 1 of the build order.
+- **One-click unsubscribe**: letters stop at once and the subscription cancels at the end of the paid period. No refunds.
+- **Code home**: a `newsletter/` folder in this repo (Lambdas, SAM template, backfill script, its own `package.json`). GitHub Pages will serve these files; they hold no secrets. Update `CLAUDE.md` and `README.md` when it lands, because the repo is no longer "no package manager".
+- **PR #7**: keep its unsubscribe help page and the `book.html` script fix; drop the Buttondown docs.
