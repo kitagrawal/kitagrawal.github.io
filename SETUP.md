@@ -19,6 +19,8 @@ Every Subscribe button (`data-subscribe`) goes to `newsletter.subscribeUrl`. Use
 
 For either: in Stripe, enable **Settings -> Billing -> Customer portal** so subscribers can cancel themselves. Keep `newsletter.price` in `config.js` equal to the real price. While `subscribeUrl` contains `REPLACE`, the Subscribe buttons are greyed out.
 
+`unsubscribe.html` explains unsubscribing to readers. No page on the site links to it and it is marked `noindex`, so readers reach it only from the letters: put a link to `https://<your-site>/unsubscribe.html` in the letter footer, next to the Unsubscribe link. Do not list it in `robots.txt`, which is public and would stop search engines seeing the `noindex`.
+
 ## 3. Deploy on GitHub Pages
 
 1. Put every file in the root of the repo `<your-username>.github.io` (branch `main`).

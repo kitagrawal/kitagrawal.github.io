@@ -36,6 +36,6 @@ window.SITE_CONFIG = {
      or a Stripe recurring Payment Link. Must start with https://. */
   newsletter: {
     price: "$7",   // text shown on the home page; "per month" is added there
-    subscribeUrl: "https://buy.stripe.com/test_fZu8wP8pM7aU9LY8sB08g00"
+    subscribeUrl: "https://buy.stripe.com/fZu8wP8pM7aU9LY8sB08g00"
   }
 };
