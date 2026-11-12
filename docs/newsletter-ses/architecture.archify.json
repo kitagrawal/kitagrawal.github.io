@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Paid newsletter on Stripe + AWS SES",
+    "output": "docs/newsletter-ses/architecture.html",
+    "quality_profile": "showcase",
+    "locale": "en"
+  },
+  "components": [
+    { "id": "reader", "type": "external", "label": "Reader", "sublabel": "browser", "pos": [40, 40], "size": [150, 64] },
+    { "id": "site", "type": "frontend", "label": "Static site", "sublabel": "GitHub Pages", "pos": [300, 40], "size": [150, 64], "tag": "data-subscribe" },
+    { "id": "paylink", "type": "external", "label": "Payment Link", "sublabel": "$7 / month checkout", "pos": [560, 40], "size": [150, 64] },
+    { "id": "billing", "type": "external", "label": "Stripe Billing", "sublabel": "subscriptions, portal", "pos": [820, 40], "size": [150, 64], "tag": "source of truth" },
+    { "id": "subs", "type": "database", "label": "DynamoDB", "sublabel": "subscribers table", "pos": [560, 200], "size": [150, 64] },
+    { "id": "webhook", "type": "backend", "label": "stripe-webhook", "sublabel": "Lambda, Function URL", "pos": [820, 200], "size": [150, 64], "tag": "verifies signature" },
+    { "id": "unsub", "type": "backend", "label": "unsubscribe", "sublabel": "Lambda, Function URL", "pos": [1080, 200], "size": [150, 64], "tag": "HMAC token" },
+    { "id": "author", "type": "external", "label": "Author", "sublabel": "writes the letter", "pos": [40, 360], "size": [150, 64] },
+    { "id": "issues", "type": "cloud", "label": "S3 issues", "sublabel": "issue.md uploads", "pos": [300, 360], "size": [150, 64] },
+    { "id": "send", "type": "backend", "label": "send-issue", "sublabel": "Lambda, fan-out", "pos": [560, 360], "size": [150, 64], "tag": "idempotent" },
+    { "id": "ses", "type": "cloud", "label": "Amazon SES", "sublabel": "domain + Easy DKIM", "pos": [820, 360], "size": [150, 64], "tag": "suppression list" },
+    { "id": "inbox", "type": "external", "label": "Subscriber inbox", "sublabel": "Gmail, Outlook, ...", "pos": [820, 520], "size": [150, 64] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Stripe", "wraps": ["paylink", "billing"] },
+    { "kind": "region", "label": "AWS account (one region)", "wraps": ["subs", "webhook", "unsub", "issues", "send", "ses"] }
+  ],
+  "connections": [
+    { "id": "subscribe", "from": "reader", "to": "site", "label": "Subscribe", "variant": "emphasis" },
+    { "id": "checkout", "from": "site", "to": "paylink", "label": "redirect", "variant": "emphasis" },
+    { "id": "create-sub", "from": "paylink", "to": "billing", "label": "creates sub", "variant": "emphasis" },
+    { "id": "events", "from": "billing", "to": "webhook", "label": "signed events", "variant": "security" },
+    { "id": "upsert", "from": "webhook", "to": "subs", "label": "upsert status" },
+    { "id": "lifecycle-mail", "from": "webhook", "to": "ses", "label": "welcome / goodbye" },
+    { "id": "upload", "from": "author", "to": "issues", "label": "upload" },
+    { "id": "trigger", "from": "issues", "to": "send", "label": "ObjectCreated", "variant": "dashed" },
+    { "id": "query", "from": "send", "to": "subs", "label": "query active" },
+    { "id": "send-mail", "from": "send", "to": "ses", "label": "SendEmail", "variant": "emphasis" },
+    { "id": "deliver", "from": "ses", "to": "inbox", "label": "deliver", "variant": "emphasis" },
+    { "id": "one-click", "from": "inbox", "to": "unsub", "label": "one-click POST" },
+    { "id": "cancel", "from": "unsub", "to": "billing", "label": "cancel at period end", "variant": "security" }
+  ],
+  "cards": [
+    { "dot": "violet", "title": "Stripe owns state", "items": ["DynamoDB is a projection of customer.subscription.* events", "Webhook dedupes on event id and re-reads the subscription, since events can arrive late or twice", "Unsubscribe changes Stripe; the webhook writes the result back"] },
+    { "dot": "emerald", "title": "Sending", "items": ["Uploading issue.md triggers one send per active subscriber", "A sent marker per issue and email makes retries safe", "List-Unsubscribe and List-Unsubscribe-Post headers on every letter"] },
+    { "dot": "amber", "title": "Deliverability", "items": ["Needs a custom domain: SES cannot verify *.github.io", "Easy DKIM, custom MAIL FROM for SPF, DMARC p=none", "Request production access to leave the SES sandbox"] },
+    { "dot": "rose", "title": "Secrets", "items": ["Stripe key, webhook signing secret and HMAC key in SSM SecureString", "Nothing secret in the repo or config.js"] }
+  ]
+}
