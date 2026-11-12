@@ -11,7 +11,7 @@ Static portfolio site, hosted on GitHub Pages. No build step or dependencies.
 | `favicon.svg` | Browser tab icon (edit the initials) |
 | `404.html` | Custom "page not found" page (shares `base.css` and `pages.css`; every URL is root-absolute because GitHub Pages serves it at any missing path) |
 | `book.html` | Consultation booking page (Cal.com popup) |
-| `unsubscribe.html` | How to leave The Applied AI Letter and stop billing (not linked from the site and marked `noindex`; reached only from the link in each letter. Buttondown does the unsubscribing) |
+| `unsubscribe.html` | How to leave The Applied AI Letter and stop billing (not linked from the site and marked `noindex`; reached only from the link in each letter) |
 | `config.js` | **Edit this**: Cal.com link and newsletter subscribe URL |
 | `base.css` | Styles every page shares: colour tokens, header, buttons, consultation cards, price, rows, footer |
 | `index.css`, `pages.css` | Page-specific styles: `index.css` for the home page, `pages.css` for book, unsubscribe and 404 |

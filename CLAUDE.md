@@ -24,8 +24,8 @@ A value counts as configured only when it is non-empty and has no `REPLACE` in i
 There is no server and no sign-up form.
 
 - **Book**: `[data-cal-book]` elements (the home-page button; the "Pick a time" button `renderOffers` draws on `book.html`) open a Cal.com popup. `site.js` sets the `data-cal-*` attributes from `cfg.cal` and loads Cal.com's embed script once. Payment, if wanted, is set up inside Cal.com.
-- **Subscribe**: `[data-subscribe]` elements get `href` from `cfg.newsletter.subscribeUrl` (the Buttondown subscribe page; Buttondown runs Stripe checkout). `site.js` greys them out until it is set.
-- Subscribers and sending live in Buttondown, billing in Stripe. No Stripe, Google Sheets or form code lives in this repo.
+- **Subscribe**: `[data-subscribe]` elements get `href` from `cfg.newsletter.subscribeUrl` (a newsletter tool's paid-subscribe page or a Stripe recurring Payment Link). `site.js` greys them out until it is set.
+- Subscribers and billing live in Stripe and the newsletter tool. No Stripe, Google Sheets or form code lives in this repo.
 
 ## Placeholders and gaps
 
