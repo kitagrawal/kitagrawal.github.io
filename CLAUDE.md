@@ -9,7 +9,7 @@ Static personal site for Ankit Agrawal, served by GitHub Pages from the `main` b
 ## Styles and scripts
 
 - `base.css` holds everything the pages share: colour tokens (and the dark-mode token pattern), reset, header, buttons, consultation cards (`.offer`), `.price`, `.rows` and the footer. Change a shared component there, once.
-- `index.css` is for the home page only; `pages.css` is for `book.html` and `404.html`. Each page loads `base.css` first, then its own file. `404.html` links everything root-absolute (`/base.css`), because GitHub Pages serves it at any missing path.
+- `index.css` is for the home page only; `pages.css` is for `book.html`, `unsubscribe.html` and `404.html`. Each page loads `base.css` first, then its own file. `404.html` links everything root-absolute (`/base.css`), because GitHub Pages serves it at any missing path.
 - `site.js` (every page: theme toggle, year, Subscribe links, Cal.com popup, and `window.Site` with `cfg` and `renderOffers`) and `config.js` load on every page. `home.js` is the home page's script; the other pages keep a short inline script.
 - The layout follows the Figma kit (concept 05 · Teal, Refined; see the `kitagrawal-figma` skill). Theme choice is stored in `localStorage` key `theme` by `site.js`.
 
