@@ -2,48 +2,474 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "Paid newsletter on Stripe + AWS SES",
+    "title": "Paid newsletter on Stripe + AWS",
     "output": "docs/newsletter-ses/architecture.html",
     "quality_profile": "showcase",
     "locale": "en"
   },
   "components": [
-    { "id": "reader", "type": "external", "label": "Reader", "sublabel": "browser", "pos": [40, 40], "size": [150, 64] },
-    { "id": "site", "type": "frontend", "label": "Static site", "sublabel": "GitHub Pages", "pos": [300, 40], "size": [150, 64], "tag": "data-subscribe" },
-    { "id": "paylink", "type": "external", "label": "Payment Link", "sublabel": "$7 / month checkout", "pos": [560, 40], "size": [150, 64] },
-    { "id": "billing", "type": "external", "label": "Stripe Billing", "sublabel": "subscriptions, portal", "pos": [820, 40], "size": [150, 64], "tag": "source of truth" },
-    { "id": "subs", "type": "database", "label": "DynamoDB", "sublabel": "subscribers table", "pos": [560, 200], "size": [150, 64] },
-    { "id": "webhook", "type": "backend", "label": "stripe-webhook", "sublabel": "Lambda, Function URL", "pos": [820, 200], "size": [150, 64], "tag": "verifies signature" },
-    { "id": "unsub", "type": "backend", "label": "unsubscribe", "sublabel": "Lambda, Function URL", "pos": [1080, 200], "size": [150, 64], "tag": "HMAC token" },
-    { "id": "author", "type": "external", "label": "Author", "sublabel": "writes the letter", "pos": [40, 360], "size": [150, 64] },
-    { "id": "issues", "type": "cloud", "label": "S3 issues", "sublabel": "issue.md uploads", "pos": [300, 360], "size": [150, 64] },
-    { "id": "send", "type": "backend", "label": "send-issue", "sublabel": "Lambda, fan-out", "pos": [560, 360], "size": [150, 64], "tag": "idempotent" },
-    { "id": "ses", "type": "cloud", "label": "Amazon SES", "sublabel": "domain + Easy DKIM", "pos": [820, 360], "size": [150, 64], "tag": "suppression list" },
-    { "id": "inbox", "type": "external", "label": "Subscriber inbox", "sublabel": "Gmail, Outlook, ...", "pos": [820, 520], "size": [150, 64] }
+    {
+      "id": "reader",
+      "type": "external",
+      "label": "Reader",
+      "sublabel": "browser",
+      "pos": [
+        40,
+        40
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "site",
+      "type": "frontend",
+      "label": "Static site",
+      "sublabel": "GitHub Pages",
+      "pos": [
+        280,
+        40
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "hidden unsubscribe.html"
+    },
+    {
+      "id": "paylink",
+      "type": "external",
+      "label": "Payment Link",
+      "sublabel": "$7 / month",
+      "pos": [
+        520,
+        40
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "billing",
+      "type": "external",
+      "label": "Stripe Billing",
+      "sublabel": "subscriptions + API",
+      "pos": [
+        760,
+        40
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "source of truth"
+    },
+    {
+      "id": "gw-new",
+      "type": "cloud",
+      "label": "API Gateway",
+      "sublabel": "POST /stripe/new-user",
+      "pos": [
+        520,
+        200
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "gw-sync",
+      "type": "cloud",
+      "label": "API Gateway",
+      "sublabel": "POST /stripe/sync",
+      "pos": [
+        760,
+        200
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "ssm",
+      "type": "cloud",
+      "label": "SSM",
+      "sublabel": "SecureString",
+      "pos": [
+        280,
+        340
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "4 secrets"
+    },
+    {
+      "id": "newuser",
+      "type": "backend",
+      "label": "NewUser",
+      "sublabel": "Lambda, Node 22",
+      "pos": [
+        520,
+        340
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "verifies signature"
+    },
+    {
+      "id": "sync",
+      "type": "backend",
+      "label": "StripeSync",
+      "sublabel": "Lambda, Node 22",
+      "pos": [
+        760,
+        340
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "verifies signature"
+    },
+    {
+      "id": "unsub",
+      "type": "backend",
+      "label": "UnsubscribeUser",
+      "sublabel": "Lambda, Node 22",
+      "pos": [
+        1000,
+        340
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "HMAC token"
+    },
+    {
+      "id": "table",
+      "type": "database",
+      "label": "DynamoDB",
+      "sublabel": "stripe-sync-subscription-status",
+      "pos": [
+        620,
+        480
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "tag": "key: customer id"
+    },
+    {
+      "id": "gw-unsub",
+      "type": "cloud",
+      "label": "API Gateway",
+      "sublabel": "POST /unsubscribe",
+      "pos": [
+        1000,
+        480
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "+ /one-click"
+    },
+    {
+      "id": "author",
+      "type": "external",
+      "label": "Author",
+      "sublabel": "writes the letter",
+      "pos": [
+        40,
+        620
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "issues",
+      "type": "cloud",
+      "label": "S3 issues",
+      "sublabel": "issue.md uploads",
+      "pos": [
+        280,
+        620
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "planned"
+    },
+    {
+      "id": "send",
+      "type": "backend",
+      "label": "send-issue",
+      "sublabel": "Lambda, fan-out",
+      "pos": [
+        520,
+        620
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "planned"
+    },
+    {
+      "id": "ses",
+      "type": "cloud",
+      "label": "Amazon SES",
+      "sublabel": "sandbox, no domain",
+      "pos": [
+        760,
+        620
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "planned"
+    },
+    {
+      "id": "inbox",
+      "type": "external",
+      "label": "Subscriber inbox",
+      "sublabel": "Gmail, Outlook, ...",
+      "pos": [
+        760,
+        780
+      ],
+      "size": [
+        150,
+        64
+      ]
+    }
   ],
   "boundaries": [
-    { "kind": "region", "label": "Stripe", "wraps": ["paylink", "billing"] },
-    { "kind": "region", "label": "AWS account (one region)", "wraps": ["subs", "webhook", "unsub", "issues", "send", "ses"] }
+    {
+      "kind": "region",
+      "label": "Stripe",
+      "wraps": [
+        "paylink",
+        "billing"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "AWS us-east-2 (profile newsletter)",
+      "wraps": [
+        "gw-new",
+        "gw-sync",
+        "ssm",
+        "newuser",
+        "sync",
+        "unsub",
+        "table",
+        "gw-unsub",
+        "issues",
+        "send",
+        "ses"
+      ]
+    }
   ],
   "connections": [
-    { "id": "subscribe", "from": "reader", "to": "site", "label": "Subscribe", "variant": "emphasis" },
-    { "id": "checkout", "from": "site", "to": "paylink", "label": "redirect", "variant": "emphasis" },
-    { "id": "create-sub", "from": "paylink", "to": "billing", "label": "creates sub", "variant": "emphasis" },
-    { "id": "events", "from": "billing", "to": "webhook", "label": "signed events", "variant": "security" },
-    { "id": "upsert", "from": "webhook", "to": "subs", "label": "upsert status" },
-    { "id": "lifecycle-mail", "from": "webhook", "to": "ses", "label": "welcome / goodbye" },
-    { "id": "upload", "from": "author", "to": "issues", "label": "upload" },
-    { "id": "trigger", "from": "issues", "to": "send", "label": "ObjectCreated", "variant": "dashed" },
-    { "id": "query", "from": "send", "to": "subs", "label": "query active" },
-    { "id": "send-mail", "from": "send", "to": "ses", "label": "SendEmail", "variant": "emphasis" },
-    { "id": "deliver", "from": "ses", "to": "inbox", "label": "deliver", "variant": "emphasis" },
-    { "id": "one-click", "from": "inbox", "to": "unsub", "label": "one-click POST" },
-    { "id": "cancel", "from": "unsub", "to": "billing", "label": "cancel at period end", "variant": "security" }
+    {
+      "id": "subscribe",
+      "from": "reader",
+      "to": "site",
+      "label": "Subscribe",
+      "variant": "emphasis"
+    },
+    {
+      "id": "checkout",
+      "from": "site",
+      "to": "paylink",
+      "label": "redirect",
+      "variant": "emphasis"
+    },
+    {
+      "id": "create-sub",
+      "from": "paylink",
+      "to": "billing",
+      "label": "creates sub",
+      "variant": "emphasis"
+    },
+    {
+      "id": "evt-created",
+      "from": "billing",
+      "to": "gw-new",
+      "label": "subscription.created",
+      "variant": "security"
+    },
+    {
+      "id": "evt-changed",
+      "from": "billing",
+      "to": "gw-sync",
+      "label": "sub updated / deleted, customer.updated",
+      "variant": "security"
+    },
+    {
+      "id": "invoke-new",
+      "from": "gw-new",
+      "to": "newuser",
+      "label": "invoke"
+    },
+    {
+      "id": "invoke-sync",
+      "from": "gw-sync",
+      "to": "sync",
+      "label": "invoke"
+    },
+    {
+      "id": "secrets",
+      "from": "ssm",
+      "to": "newuser",
+      "label": "secrets"
+    },
+    {
+      "id": "write-new",
+      "from": "newuser",
+      "to": "table",
+      "label": "UpdateItem"
+    },
+    {
+      "id": "write-sync",
+      "from": "sync",
+      "to": "table",
+      "label": "UpdateItem"
+    },
+    {
+      "id": "unsub-link",
+      "from": "inbox",
+      "to": "site",
+      "label": "clicks Unsubscribe (?c&t)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "unsub-post",
+      "from": "site",
+      "to": "gw-unsub",
+      "label": "POST {c, t, email}",
+      "variant": "emphasis"
+    },
+    {
+      "id": "invoke-unsub",
+      "from": "gw-unsub",
+      "to": "unsub",
+      "label": "invoke"
+    },
+    {
+      "id": "check-unsub",
+      "from": "unsub",
+      "to": "table",
+      "label": "GetItem: match email"
+    },
+    {
+      "id": "cancel",
+      "from": "unsub",
+      "to": "billing",
+      "label": "cancel at period end",
+      "variant": "security"
+    },
+    {
+      "id": "one-click",
+      "from": "inbox",
+      "to": "gw-unsub",
+      "label": "one-click header POST",
+      "variant": "dashed"
+    },
+    {
+      "id": "upload",
+      "from": "author",
+      "to": "issues",
+      "label": "upload"
+    },
+    {
+      "id": "trigger",
+      "from": "issues",
+      "to": "send",
+      "label": "trigger",
+      "variant": "dashed"
+    },
+    {
+      "id": "scan",
+      "from": "send",
+      "to": "table",
+      "label": "scan active"
+    },
+    {
+      "id": "send-mail",
+      "from": "send",
+      "to": "ses",
+      "label": "SendEmail",
+      "variant": "emphasis"
+    },
+    {
+      "id": "deliver",
+      "from": "ses",
+      "to": "inbox",
+      "label": "deliver",
+      "variant": "emphasis"
+    }
   ],
   "cards": [
-    { "dot": "violet", "title": "Stripe owns state", "items": ["DynamoDB is a projection of customer.subscription.* events", "Webhook dedupes on event id and re-reads the subscription, since events can arrive late or twice", "Unsubscribe changes Stripe; the webhook writes the result back"] },
-    { "dot": "emerald", "title": "Sending", "items": ["Uploading issue.md triggers one send per active subscriber", "A sent marker per issue and email makes retries safe", "List-Unsubscribe and List-Unsubscribe-Post headers on every letter"] },
-    { "dot": "amber", "title": "Deliverability", "items": ["Needs a custom domain: SES cannot verify *.github.io", "Easy DKIM, custom MAIL FROM for SPF, DMARC p=none", "Request production access to leave the SES sandbox"] },
-    { "dot": "rose", "title": "Secrets", "items": ["Stripe key, webhook signing secret and HMAC key in SSM SecureString", "Nothing secret in the repo or config.js"] }
+    {
+      "dot": "violet",
+      "title": "Stripe owns state",
+      "items": [
+        "The table is a projection; username holds the Stripe customer id",
+        "NewUser and StripeSync re-fetch the subscription from the Stripe API, so repeated or out-of-order events are harmless",
+        "An ended subscription never overwrites a newer one for the same customer"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Three endpoints, built",
+      "items": [
+        "Each Lambda has its own HTTP API (20 req/s) and least-privilege IAM role",
+        "Stripe sends subscription.created to NewUser; updates, deletes and customer.updated to StripeSync",
+        "Code in newsletter/, pushed with newsletter/deploy.sh"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Unsubscribe",
+      "items": [
+        "Letter link opens the hidden unsubscribe.html with ?c=<customer id>&t=<HMAC token>",
+        "Reader types their email; the page POSTs {c, t, email}. UnsubscribeUser checks the token, then the email against the DynamoDB row",
+        "Then cancels at period end in Stripe (metadata email_opt_out) and re-syncs the row: receives_letters false at once",
+        "The mail header's one-click POST needs the token only; there is no GET route"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Secrets in SSM (us-east-2)",
+      "items": [
+        "Two webhook signing secrets, a restricted Stripe key, the unsubscribe HMAC key",
+        "Each Lambda can read only the parameters it uses",
+        "Nothing secret in the repo or config.js"
+      ]
+    },
+    {
+      "dot": "slate",
+      "title": "Planned, not built",
+      "items": [
+        "S3 issues bucket, send-issue Lambda, welcome and goodbye emails",
+        "SES is in the sandbox and needs a custom sending domain"
+      ]
+    }
   ]
 }

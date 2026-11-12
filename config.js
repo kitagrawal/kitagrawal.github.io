@@ -36,6 +36,9 @@ window.SITE_CONFIG = {
      or a Stripe recurring Payment Link. Must start with https://. */
   newsletter: {
     price: "$7",   // text shown on the home page; "per month" is added there
-    subscribeUrl: "https://buy.stripe.com/fZu8wP8pM7aU9LY8sB08g00"
+    subscribeUrl: "https://buy.stripe.com/fZu8wP8pM7aU9LY8sB08g00",
+    // unsubscribeApiUrl: the UnsubscribeUser API route (newsletter/setup-unsubscribe.sh prints it).
+    // The hidden unsubscribe.html page posts the reader's email and the c/t from their letter's link here.
+    unsubscribeApiUrl: "https://REPLACE.execute-api.us-east-2.amazonaws.com/unsubscribe"
   }
 };
