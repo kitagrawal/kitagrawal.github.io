@@ -86,8 +86,10 @@ async function readerEmails(customerId, old, row) {
 
     // Render before claiming: a broken copy file burns no claim, so the email goes out once it is fixed.
     const copy = parseLetter(await readFile(new URL(`./emails/${due.kind}.md`, import.meta.url), "utf8"));
+    // Welcome carries the reader's Cancel link; after a cancel or the end the link is pointless, so it is left out.
+    const cancelUrl = due.kind === "welcome" ? cancelPageUrl(cfg.CANCEL_PAGE, customerId) : null;
     const fields = Number.isFinite(row.current_period_end) ? { until: row.current_period_end } : {};
-    const { subject, html, text } = renderLetter({ ...copy, cancelUrl: cancelPageUrl(cfg.CANCEL_PAGE, customerId), fields });
+    const { subject, html, text } = renderLetter({ ...copy, cancelUrl, fields });
 
     if (!(await claim(customerId, due))) return console.log(JSON.stringify({ customerId, readerEmail: due.kind, skipped: "claimed or no longer due" }));
     try { // from here the claim stays whatever happens: at most once

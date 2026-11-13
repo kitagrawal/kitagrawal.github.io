@@ -332,12 +332,34 @@ test("readerEmail: nothing in the sandbox, without an email, or for a plan that 
   assert.equal(readerEmail(undefined, live({ email_opt_out: true }), true), null); // legacy opt-out: no welcome
 });
 
-test("readerEmail: a sandbox skip claims nothing, so the welcome goes out on a later event", () => {
+test("readerEmail: a welcome skipped in the sandbox is lost; the readers' later events never send it", () => {
   const sandboxed = step(undefined, checkout(), false);
   const s1 = step(sandboxed.row, subEv({}, 1100, "customer.subscription.created"), false);
   assert.equal(s1.due, null);
-  assert.equal(s1.row.welcomed_at, undefined);
-  assert.equal(step(s1.row, subEv({}, 1200), true).due.kind, "welcome");
+  assert.equal(s1.row.welcomed_at, undefined); // nothing claimed
+  assert.equal(step(s1.row, subEv({}, 1200), true).due, null);
+});
+
+test("readerEmail: a reader already live with an email gets no welcome on a renewal or any later event", () => {
+  const existing = play(checkout(), subEv({}, 1100, "customer.subscription.created")); // no welcomed_at: live before reader emails
+  assert.equal(existing.welcomed_at, undefined);
+  for (const e of [subEv({}, 1200), subEv({ cancel_at_period_end: false }, 1300), checkout("other@x.com", 1400),
+                   ev("customer.updated", { id: "cus_1", email: "n@x.com" }, 1500)]) {
+    assert.notEqual(step(existing, e).due?.kind, "welcome");
+  }
+  assert.equal(readerEmail(existing, { ...existing }, true), null);
+  assert.equal(step(existing, subEv({}, 1200)).due, null);
+});
+
+test("readerEmail: exactly one welcome in either event order, and none after the claim", () => {
+  const sub1 = subEv({}, 1100, "customer.subscription.created");
+  for (const order of [[checkout(), sub1], [sub1, checkout("Reader@Example.com", 1200)]]) {
+    const { dues } = run(...order, subEv({}, 1300), subEv({}, 1400));
+    assert.equal(dues.filter((d) => d === "welcome").length, 1, JSON.stringify(dues));
+  }
+  assert.equal(readerEmail(live({ email_lc: "a@x.com" }), live({ email_lc: "a@x.com" }), true), null);
+  assert.equal(readerEmail(live({ email_lc: "a@x.com", sub_live: false }), live({ email_lc: "a@x.com" }), true).kind, "welcome");
+  assert.equal(readerEmail(live({ email_lc: undefined }), live({ email_lc: "a@x.com" }), true).kind, "welcome");
 });
 
 test("readerEmail: no welcome for a row that starts ended; no goodbye either", () => {

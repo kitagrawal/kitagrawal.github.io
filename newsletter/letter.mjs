@@ -61,13 +61,17 @@ const inline = (html) =>
     .replace(/<hr>/g, `<hr style="border:0;border-top:1px solid #e3dfd6;margin:28px 0;">`)
     .replace(/<img /g, `<img style="max-width:100%;height:auto;" `);
 
+// cancelUrl: null (or empty) leaves the Cancel link out of the footer, for reader emails sent after the
+// reader has already cancelled or the plan has ended; the support line stays.
 export function renderLetter({ subject, body, cancelUrl, fields = {} }) {
   const subj = fill(subject, fields);
   const md = fill(body, fields);
   // Field values are escaped before Markdown sees them, so a value can never inject HTML.
   const content = inline(marked.parse(fill(body, fields, escapeHtml), { async: false, gfm: true, breaks: false }));
   const title = escapeHtml(subj);
-  const url = escapeHtml(cancelUrl);
+  const cancelHtml = cancelUrl
+    ? `<p style="margin:0 0 8px;font-size:14px;line-height:1.6;color:#5d6370;"><a href="${escapeHtml(cancelUrl)}" style="color:${ACCENT};text-decoration:underline;">Cancel your plan</a></p>\n`
+    : "";
   const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -85,8 +89,7 @@ export function renderLetter({ subject, body, cancelUrl, fields = {} }) {
 <h1 style="font-size:28px;line-height:1.25;margin:0 0 20px;color:#16181d;border-bottom:3px solid ${ACCENT};padding-bottom:16px;">${title}</h1>
 ${content}
 <hr style="border:0;border-top:1px solid #e3dfd6;margin:32px 0 16px;">
-<p style="margin:0 0 8px;font-size:14px;line-height:1.6;color:#5d6370;"><a href="${url}" style="color:${ACCENT};text-decoration:underline;">Cancel your plan</a></p>
-<p style="margin:0;font-size:14px;line-height:1.6;color:#5d6370;">Questions or trouble with your plan? Email <a href="mailto:${SUPPORT_EMAIL}" style="color:${ACCENT};text-decoration:underline;">${SUPPORT_EMAIL}</a>.</p>
+${cancelHtml}<p style="margin:0;font-size:14px;line-height:1.6;color:#5d6370;">Questions or trouble with your plan? Email <a href="mailto:${SUPPORT_EMAIL}" style="color:${ACCENT};text-decoration:underline;">${SUPPORT_EMAIL}</a>.</p>
 </td></tr>
 </table>
 </td></tr>
@@ -94,6 +97,6 @@ ${content}
 </body>
 </html>
 `;
-  const text = `${md.replace(/\s+$/, "")}\n\n--\nCancel your plan: ${cancelUrl}\nQuestions or trouble with your plan? Email ${SUPPORT_EMAIL}.\n`;
+  const text = `${md.replace(/\s+$/, "")}\n\n--\n${cancelUrl ? `Cancel your plan: ${cancelUrl}\n` : ""}Questions or trouble with your plan? Email ${SUPPORT_EMAIL}.\n`;
   return { subject: subj, html, text };
 }

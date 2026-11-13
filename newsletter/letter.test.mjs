@@ -99,3 +99,14 @@ test("parseLetter then renderLetter: round trip", () => {
   assert.match(r.html, /<h1 [^>]*>Heading<\/h1>/);
   assert.ok(r.text.includes("cus_PROOF"));
 });
+
+test("renderLetter: cancelUrl null leaves the Cancel link out of both parts and keeps the support line", () => {
+  for (const cancelUrl of [null, undefined, ""]) {
+    const { html, text } = renderLetter({ subject: "S", body: "Hello **bold**.\n", cancelUrl });
+    assert.ok(!/Cancel your plan/i.test(html), String(cancelUrl));
+    assert.ok(!/unsubscribe\.html/.test(html) && !html.includes("undefined"));
+    assert.ok(html.includes(SUPPORT) && html.includes("<strong>bold</strong>"));
+    assert.ok(!/Cancel your plan/i.test(text) && !text.includes("undefined"));
+    assert.equal(text, `Hello **bold**.\n\n--\nQuestions or trouble with your plan? Email ${SUPPORT}.\n`);
+  }
+});

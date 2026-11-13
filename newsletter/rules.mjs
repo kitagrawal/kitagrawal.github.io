@@ -189,20 +189,25 @@ export function sendPlan(objectKey, rows, productionAccess) {
 
 // Which reader email (if any) a row change makes due. StripeSync calls it after saveRow writes, with the
 // row before (or undefined) and after the write. Returns { kind, claim } or null:
-//   welcome            claim welcomed_at     the plan is live (and the reader has not opted out), no welcome yet
+//   welcome            claim welcomed_at     the write makes the plan live with an email (the row before was not
+//                                            already live with one), no opt-out, no welcome yet
 //   cancel-scheduled   claim cancel_noted_at a cancel is scheduled on a live plan and not yet noted; needs
 //                      current_period_end for the "letters continue until" date. applyEvent clears
 //                      cancel_noted_at when the cancel is resumed, so cancel, resume, cancel notes twice
 //   goodbye            claim goodbye_at      the plan ended, no goodbye yet, and the reader was welcomed or the
 //                      write is the one that ended a live plan (a row that never went live gets none)
 // One email per event: welcome wins over cancel-scheduled. null in the SES sandbox (nothing is claimed, so
-// the email goes out on a later event once production access exists) or when there is no email on file.
+// a welcome skipped in the sandbox is lost; cancel-scheduled and goodbye still go out on a later event) or when there is no email on file.
 // The claim is a field on the row: StripeSync sets it with a conditional write before sending, so each
 // email is sent at most once.
 export function readerEmail(oldRow, newRow, productionAccess) {
   if (productionAccess !== true || !newRow?.email) return null;
   const live = newRow.sub_live === true && newRow.email_opt_out !== true;
-  if (live && !newRow.welcomed_at) return { kind: "welcome", claim: "welcomed_at" };
+  // Welcome only on the change that makes the plan live with an email: the row before was not already live
+  // with an email, so readers who were live before reader emails existed never get one, and both event orders
+  // (subscription first, or the checkout email first) give exactly one.
+  const alreadyLive = oldRow?.sub_live === true && Boolean(oldRow.email_lc);
+  if (live && !alreadyLive && !newRow.welcomed_at) return { kind: "welcome", claim: "welcomed_at" };
   if (live && newRow.cancel_at_period_end === true && !newRow.cancel_noted_at && Number.isFinite(newRow.current_period_end)) {
     return { kind: "cancel-scheduled", claim: "cancel_noted_at" };
   }
