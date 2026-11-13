@@ -45,6 +45,6 @@ window.SITE_CONFIG = {
     // cancel page with no login; if that link cannot be made, the reader is sent here instead, with their
     // email filled in. Must start with https://.
     // portalUrl: "https://billing.stripe.com/p/login/fZu8wP8pM7aU9LY8sB08g00"
-    portalUrl: "https://billing.stripe.com/p/login/fZu8wP8pM7aU9LY8sB08g00"
+    portalUrl: "https://buy.stripe.com/test_14A6oHaxU8eYgamfV308g01"
   }
 };
