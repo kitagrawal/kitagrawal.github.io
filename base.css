@@ -81,3 +81,4 @@ nav{display:flex;align-items:center;justify-content:space-between;gap:16px;paddi
 footer{border-top:1px solid var(--line);padding:28px 0;color:var(--muted);font-size:14px}
 footer .wrap{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
 footer a{color:var(--muted)}
+footer nav{display:flex;flex-wrap:wrap;gap:8px 20px}

@@ -11,10 +11,11 @@ Static portfolio site, hosted on GitHub Pages. No build step or dependencies.
 | `favicon.svg` | Browser tab icon (edit the initials) |
 | `404.html` | Custom "page not found" page (shares `base.css` and `pages.css`; every URL is root-absolute because GitHub Pages serves it at any missing path) |
 | `book.html` | Consultation booking page (Cal.com popup) |
+| `terms.html`, `privacy.html`, `consent.html`, `contact.html` | Legal pages for the letter and consultations: Terms & Conditions, Privacy Policy, Email & Cookie Consent, Contact & Concerns (support@appliedailetter.com). Each footer links all four; other pages link Terms, Privacy and Contact. When one changes materially, update its effective date and email subscribers |
 | `unsubscribe.html` | Leave The Applied AI Letter: reached only from the signed link in each letter (`?c=&t=`; not linked from the site, marked `noindex`). The reader confirms their email; the `UnsubscribeUser` Lambda stops letters and emails the owner, who cancels the plan in Stripe |
 | `config.js` | **Edit this**: Cal.com link, newsletter subscribe URL and the unsubscribe API URL |
 | `base.css` | Styles every page shares: colour tokens, header, buttons, consultation cards, price, rows, footer |
-| `index.css`, `pages.css` | Page-specific styles: `index.css` for the home page, `pages.css` for book, unsubscribe and 404 |
+| `index.css`, `pages.css` | Page-specific styles: `index.css` for the home page, `pages.css` for book, the legal pages, unsubscribe and 404 |
 | `site.js`, `home.js` | `site.js` is the shared helpers (theme, consultation cards) for every page; `home.js` is the home page's own script |
 | `theme-icon.svg` | Theme toggle icon (used as a CSS mask, so it follows the text colour) |
 | `SETUP.md` | Step-by-step Cal.com and newsletter setup |
