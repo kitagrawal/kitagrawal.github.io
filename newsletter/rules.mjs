@@ -6,12 +6,12 @@ const LETTER_STATUSES = ["active", "trialing", "past_due"];
 const ENDED = ["canceled", "incomplete_expired"];
 export const isEnded = (status) => ENDED.includes(status);
 
-// "This subscription gets letters", from the subscription alone. applyEvent stores it as sub_live
-// and combines it with the reader's opt-out into the row's receives_letters.
+// "This subscription gets letters", from the subscription alone. A scheduled cancel
+// (cancel_at_period_end or cancel_at) does not stop letters: they run until Stripe reports the
+// plan canceled. applyEvent stores this as sub_live and combines it with the reader's legacy
+// opt-out into the row's receives_letters.
 export const receivesLetters = (sub) =>
   LETTER_STATUSES.includes(sub.status) &&
-  !sub.cancel_at_period_end &&
-  !sub.cancel_at &&
   !sub.pause_collection &&
   sub.metadata?.email_opt_out !== "true";
 

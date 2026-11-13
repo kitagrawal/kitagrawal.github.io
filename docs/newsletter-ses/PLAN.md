@@ -56,7 +56,7 @@ Checked on 2026-11-11.
 | `customer.updated` | Copy a changed email address. |
 | `invoice.payment_failed` | Nothing extra: the status change arrives as `subscription.updated`. Stripe's own failed-payment emails handle dunning. |
 
-**Who gets a letter**: status `active` or `trialing`, and `email_opt_out` is false. Proposed default for `past_due`: keep sending while Stripe retries the card, stop when it cancels.
+**Who gets a letter**: status `active`, `trialing` or `past_due`, and `email_opt_out` is false. A scheduled cancel does not stop letters; they stop when Stripe reports the plan canceled. See the full rule below.
 
 ### Publish an issue
 
@@ -79,7 +79,7 @@ Path: the reader clicks **Unsubscribe** in a letter → the hidden `unsubscribe.
 
 Both routes have their own throttle (2 req/s, burst 5) and CORS allows only the site and `http://localhost:8000`. The reader never signs in to the Stripe portal. The owner can also unsubscribe a reader in the Stripe Dashboard (cancel, or metadata `email_opt_out=true`).
 
-**Who gets a letter** (`applyEvent` and `receivesLetters` in `newsletter/rules.mjs`): status `active`, `trialing` or `past_due`, not `cancel_at_period_end`, `cancel_at`, `pause_collection` or metadata `email_opt_out`, the row not opted out on the page, and an email on file. The table stores the result as `receives_letters`; `send-issue` reads only that, and dedupes by `email_lc` (a Payment Link creates a new customer at each checkout, so one email can have two rows).
+**Who gets a letter** (`applyEvent` and `receivesLetters` in `newsletter/rules.mjs`): status `active`, `trialing` or `past_due`, not `pause_collection` or metadata `email_opt_out`, the row not carrying the legacy opt-out, and an email on file. A scheduled cancel (`cancel_at_period_end` or `cancel_at`) does not stop letters: the reader keeps getting them until Stripe reports the plan `canceled`. The table stores the result as `receives_letters`; `send-issue` reads only that, and dedupes by `email_lc` (a Payment Link creates a new customer at each checkout, so one email can have two rows).
 
 **Source of truth.** Billing changes are made in Stripe. DynamoDB is built from signed webhook events only (AWS holds no Stripe API key), plus the reader's opt-out; never edit it by hand. Stripe retries a failed webhook for up to 3 days; there is no reconcile, because that would need an API key.
 

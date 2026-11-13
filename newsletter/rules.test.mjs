@@ -22,9 +22,16 @@ test("receivesLetters: live statuses get letters", () => {
   }
 });
 
-test("receivesLetters: cancel at period end, cancel_at, pause and opt-out stop letters", () => {
-  assert.equal(receivesLetters(sub({ cancel_at_period_end: true })), false);
-  assert.equal(receivesLetters(sub({ cancel_at: 12345 })), false);
+test("receivesLetters: a scheduled cancel on a live plan still gets letters", () => {
+  for (const status of ["active", "trialing", "past_due"]) {
+    assert.equal(receivesLetters(sub({ status, cancel_at_period_end: true })), true, status);
+    assert.equal(receivesLetters(sub({ status, cancel_at: 12345 })), true, status);
+  }
+  assert.equal(receivesLetters(sub({ status: "canceled", cancel_at_period_end: true })), false);
+  assert.equal(receivesLetters(sub({ status: "canceled", cancel_at: 12345 })), false);
+});
+
+test("receivesLetters: pause and metadata opt-out stop letters", () => {
   assert.equal(receivesLetters(sub({ pause_collection: { behavior: "void" } })), false);
   assert.equal(receivesLetters(sub({ metadata: { email_opt_out: "true" } })), false);
   assert.equal(receivesLetters(sub({ metadata: { email_opt_out: "false" } })), true);
@@ -89,11 +96,20 @@ test("applyEvent: two subscriptions -> keep the one that gets letters", () => {
   assert.equal(row.receives_letters, true);
 });
 
-test("applyEvent: cancel at period end, cancel_at, pause, past_due", () => {
-  assert.equal(play(checkout(), subEv({ cancel_at_period_end: true })).receives_letters, false);
-  assert.equal(play(checkout(), subEv({ cancel_at: 5 })).cancel_at_period_end, true);
+test("applyEvent: a scheduled cancel keeps letters until Stripe reports canceled; pause stops them", () => {
+  assert.equal(play(checkout(), subEv({ cancel_at_period_end: true })).receives_letters, true);
+  const scheduled = play(checkout(), subEv({ cancel_at: 5 }));
+  assert.equal(scheduled.cancel_at_period_end, true);
+  assert.equal(scheduled.receives_letters, true);
+  const ended = play(checkout(), subEv({ cancel_at_period_end: true }, 1100), subEv({ status: "canceled", cancel_at_period_end: true }, 1200, "customer.subscription.deleted"));
+  assert.equal(ended.receives_letters, false);
   assert.equal(play(checkout(), subEv({ pause_collection: { behavior: "void" } })).receives_letters, false);
   assert.equal(play(checkout(), subEv({ status: "past_due" })).receives_letters, true);
+});
+
+test("legacy opt-out row stays receives_letters false even with a live plan and a scheduled cancel", () => {
+  const row = { ...play(checkout(), subEv({ cancel_at_period_end: true })), email_opt_out: true };
+  assert.equal(applyEvent(row, subEv({ cancel_at_period_end: true }, 1300), PROD).row.receives_letters, false);
 });
 
 test("optOut: letters stop and stay stopped through later webhooks, including the owner's cancel", () => {
