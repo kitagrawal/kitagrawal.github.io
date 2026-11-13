@@ -33,7 +33,7 @@ if aws sesv2 get-email-identity --email-identity "$DOMAIN" >/dev/null 2>&1; then
     length=$(aws sesv2 get-email-identity --email-identity "$DOMAIN" --query DkimAttributes.CurrentSigningKeyLength --output text)
     if [[ "$length" != RSA_2048_BIT ]]; then
       aws sesv2 put-email-identity-dkim-signing-attributes --email-identity "$DOMAIN" \
-        --signing-attribute-origin AWS_SES --signing-attributes NextSigningKeyLength=RSA_2048_BIT >/dev/null
+        --signing-attributes-origin AWS_SES --signing-attributes NextSigningKeyLength=RSA_2048_BIT >/dev/null
       echo "DKIM key length was $length: switching to RSA_2048_BIT"
     fi
   else
