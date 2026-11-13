@@ -10,14 +10,43 @@ Everything is static and deploys on GitHub Pages. You only edit **`config.js`**.
 
 "Book an appointment" (home page) and "Pick a time" (`book.html`) open the event in a popup. While `bookLink` contains `REPLACE`, they show "Coming soon".
 
-## 2. Newsletter (Stripe, optionally through an email tool)
+## 2. Newsletter (Stripe and Amazon SES)
 
-Every Subscribe button (`data-subscribe`) goes to `newsletter.subscribeUrl`. Use one of:
+The letter runs on Stripe (checkout and billing) and AWS (the reader list and the sending), with no newsletter tool. Every Subscribe button (`data-subscribe`) goes to `newsletter.subscribeUrl`: a Stripe recurring Payment Link. Keep `newsletter.price` in `config.js` equal to the real price. While `subscribeUrl` contains `REPLACE`, the Subscribe buttons are greyed out.
 
-- **A newsletter tool's paid-subscribe page** (recommended). Tools such as Buttondown, beehiiv or Ghost connect to your Stripe account, run checkout, and keep an up-to-date list of active subscribers for you.
-- **A plain Stripe recurring Payment Link.** Works for taking money, but Stripe is then the only subscriber list, and you must email subscribers from an export.
+### Publish a letter
 
-Keep `newsletter.price` in `config.js` equal to the real price. While `subscribeUrl` contains `REPLACE`, the Subscribe buttons are greyed out.
+Letters are Markdown files uploaded to the `ain-articles-…` S3 bucket. The file starts with front matter holding the subject; a file without a subject is refused:
+
+```markdown
+---
+subject: The subject line
+---
+
+The letter, in Markdown.
+```
+
+1. Upload it to `drafts/<date>-<slug>.md`. That sends one **Proof** to the author's address: the same email readers will get, with a sample Cancel link.
+2. When the Proof looks right, upload the same file to `issues/<date>-<slug>.md`. That sends the **letter** to every reader whose plan is live, once per email address, each with their own Cancel link.
+
+Re-uploading a file never sends a reader the same letter twice. If a run stops part way, upload the file again to reach the readers it missed. While SES is still in the sandbox, an `issues/` upload is refused and you get an alert; only Proofs go out.
+
+### Set up sending (once)
+
+The scripts change live AWS, so you run them yourself, in this order. Each is safe to run again. The reasons are in `docs/newsletter-ses/PLAN.md`.
+
+1. `newsletter/setup-ses.sh`: verifies `appliedailetter.com` in SES and prints the DNS records.
+2. Paste the records into IONOS and wait until the script reports the domain verified. Leave the existing root SPF, mail records and DMARC alone.
+3. In SES (us-east-2), verify your author address as an email identity. In the sandbox SES sends only to verified addresses.
+4. `AUTHOR_EMAIL=you@example.com newsletter/setup-send.sh`. Replies to a letter go to `REPLY_TO` (default `support@appliedailetter.com`).
+5. `newsletter/deploy.sh`.
+6. `ALERT_EMAIL=you@example.com newsletter/setup-alarms.sh`, then confirm the SNS email. It alerts you when the bounce rate passes 2%, the complaint rate passes 0.05%, a Lambda errors, a real send is refused or a reader email fails.
+7. Upload a draft and check the Proof.
+8. Submit the production-access request from `docs/newsletter-ses/production-access.md` (fill in its `REPLACE` values). AWS answers in about 96 hours. Only after that can an `issues/` upload reach readers.
+
+Each script refuses an address that contains `REPLACE`. Readers also get three **reader emails**, each at most once: a welcome when the plan goes live, a note when a Cancel is scheduled, and a goodbye when the plan ends. Their wording is in `newsletter/emails/*.md`; edit it, run the tests, then `newsletter/deploy.sh`. They are skipped while SES is in the sandbox.
+
+### Cancel
 
 `unsubscribe.html` is the cancel page (it keeps its old file name so old letter links still work). Nothing on the site links to it and it is marked `noindex`; readers reach it only from the Cancel link at the bottom of a letter, which looks like `https://<your-site>/unsubscribe.html?c=<Stripe customer id>`. The reader presses one Confirm button and the page posts `{ c }` to the `CancelPlan` Lambda, which sets the plan to end at the end of the paid period. Letters continue until then and the reader is not charged again; Stripe's webhook brings the change into the table. The id alone is the proof (`docs/adr/0001-cancel-link-proof-is-customer-id.md`). The only Stripe key in AWS is a restricted one with only **Subscriptions: Write**; you get no email. Without `c` the page asks the reader to open the link from a letter. To turn it on:
 

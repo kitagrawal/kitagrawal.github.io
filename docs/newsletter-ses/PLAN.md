@@ -1,6 +1,6 @@
 # Plan: paid newsletter on Stripe + AWS SES
 
-Status: subscriber sync and Cancel built (see **Built so far**); SES sending, `send-issue` and the welcome email are not. Diagram: [`architecture.html`](architecture.html) (open it in a browser; its source is `architecture.archify.json`).
+Status: built, nothing of the SES half run against live AWS yet. Subscriber sync, Cancel, SES sending, `SendIssue`, reader emails and alarms all exist as code and setup scripts (see **Built so far**); the owner runs the go-live order below, then SES production access decides when real letters can go out. Diagram: [`architecture.html`](architecture.html) (open it in a browser; its source is `architecture.archify.json`).
 
 ## Goal
 
@@ -62,7 +62,7 @@ Checked on 2026-11-11.
 
 1. The author uploads `drafts/<date>-<slug>.md` (front matter: `subject`). The send Lambda sends it **only to the author**, as a proof.
 2. When it looks right, the author copies it to `issues/<date>-<slug>.md`. That starts the real send.
-3. For each active subscriber, the Lambda first writes a `sends` item `(issue, customer)` with a condition that it does not exist yet, then calls SES `SendEmail`. A retry after a crash skips everyone already sent.
+3. For each reader who receives letters, once per email address, the Lambda first writes a `sends` item `(issue_id, email_lc)` with a condition that it does not exist yet, then calls SES `SendEmail`. A retry after a crash skips everyone already sent. While SES is in the sandbox a real send is refused, logged and alarmed (`Newsletter/RefusedSend`); only proofs go out.
 4. Each email carries a plain-text part and the Cancel link at the bottom, `unsubscribe.html?c=<customer id>` built with `cancelPageUrl` (`newsletter/rules.mjs`). It carries **no** `List-Unsubscribe` or `List-Unsubscribe-Post` headers (ADR 0002): a mail app or scanner must never cancel a paid plan without the reader's confirm.
 
 The Lambda paces itself to the account's SES send rate (read it with `GetAccount`). One run of up to 15 minutes covers thousands of readers. Past that, put an SQS queue between the fan-out and the sends.
@@ -85,14 +85,14 @@ The route has its own throttle (2 req/s, burst 5) and CORS allows only the site 
 
 ### Bounces and complaints
 
-The SES account-level suppression list blocks addresses that hard-bounced or complained. A CloudWatch alarm on the SES bounce and complaint rates warns well before the review levels. A Lambda that also marks these readers in DynamoDB can come later if needed.
+The SES account-level suppression list blocks addresses that hard-bounced or complained. CloudWatch alarms on the SES bounce rate (2%) and complaint rate (0.05%) email the author well before the review levels (`setup-alarms.sh`). A Lambda that also marks these readers in DynamoDB can come later if needed.
 
 ## Data model (DynamoDB, on-demand)
 
 | Table | Key | Attributes |
 |---|---|---|
-| `subscribers` | `customer_id` | `email`, `status`, `cancel_at_period_end`, `current_period_end`, `email_opt_out`, `welcomed_at`, `goodbye_at`, `updated_at` |
-| `sends` | `issue_id`, `customer_id` | `sent_at`, `ses_message_id` |
+| `subscribers` | `customer_id` | `email`, `status`, `cancel_at_period_end`, `current_period_end`, `email_opt_out`, `welcomed_at`, `cancel_noted_at`, `goodbye_at`, `updated_at` |
+| `sends` | `issue_id`, `email_lc` | `customer_id`, `claimed_at`, `sent_at`, `ses_message_id` |
 | `events` | `event_id` | TTL of 30 days |
 
 The list is small, so the send Lambda scans `subscribers` and filters. Add an index on `status` only if that gets slow.
@@ -115,7 +115,7 @@ Each step can ship on its own.
 
 ## Changes to this repo
 
-None for the site. When the system is live, rewrite the newsletter section of `SETUP.md` to describe Stripe + SES instead of a newsletter tool.
+None for the site. The newsletter section of `SETUP.md` now describes Stripe + SES instead of a newsletter tool.
 
 ## Built so far (2026-11-12)
 
@@ -153,7 +153,33 @@ SSM SecureString parameters (set by hand, not in code):
 |---|---|
 | `/newsletter/stripe-sync/webhook-secret` | `whsec_` of the Stripe endpoint for StripeSync |
 
-Not built yet: SES domain, `send-issue` (it builds each letter's Cancel link with `cancelPageUrl` and sets no `List-Unsubscribe` headers), welcome and goodbye emails.
+### SES, SendIssue, reader emails and alarms (built, not yet run)
+
+Everything is in `newsletter/`, region us-east-2, profile `newsletter`. The author runs the scripts; they change live AWS. Letters and reader emails come from `letters@appliedailetter.com`, with Reply-To `support@appliedailetter.com` by default, and carry no `List-Unsubscribe` headers (ADR 0002).
+
+- **SES** (`setup-ses.sh`): domain identity `appliedailetter.com` with Easy DKIM (RSA 2048), custom MAIL FROM `bounce.appliedailetter.com`, and one configuration set `newsletter` (reputation metrics on). It prints the five DNS records for IONOS (3 DKIM CNAMEs, MAIL FROM MX and SPF TXT) and polls until SES reports them verified. The root SPF, the IONOS MX records and DMARC `p=none` stay as they are.
+- **`SendIssue`** (`send-issue/index.mjs`, 15 minutes, own role `send-issue-role`): S3 `ObjectCreated` on `drafts/*.md` and `issues/*.md` in the articles bucket. `sendPlan` (`rules.mjs`) routes the key. A **Draft** produces one **Proof** to `AUTHOR_EMAIL`. An `issues/` upload goes to every reader who receives letters, deduped by `email_lc`, paced to the SES `MaxSendRate`, each with their own Cancel link; refused in the sandbox. A missing `subject:` front matter stops the send. `letter.mjs` (with the vendored `marked`) renders the same HTML and text for proof and letter. Proofs sent while SES is still in the sandbox need `AUTHOR_EMAIL` verified as an SES identity.
+- **Sends table** (`newsletter-sends`, key `issue_id` + `email_lc`): a conditional put claims each reader before the SES call, so a re-upload or a crash never sends a letter twice. A failed SES call removes the claim, so a re-upload retries that reader.
+- **Reader emails** (`stripe-sync/index.mjs`, wording in `newsletter/emails/*.md`): `readerEmail` (`rules.mjs`) decides welcome, cancel-scheduled or goodbye from the row before and after a change. StripeSync claims the field (`welcomed_at`, `cancel_noted_at`, `goodbye_at`) with a conditional update, then sends once; a failure is logged, counted and never retried, and the webhook still answers 200. In the sandbox nothing is claimed or sent.
+- **Bucket**: `setup-send.sh` blocks all public access and lets only `SendIssue` read `drafts/` and `issues/`. It replaces the bucket notification but keeps any entry that is not its own `send-issue-*`.
+- **Alarms** (`setup-alarms.sh`): SNS topic `newsletter-alerts` with an email subscription to `ALERT_EMAIL`. Alarms: SES `Reputation.BounceRate` above 0.02 and `Reputation.ComplaintRate` above 0.0005 (account-wide metrics, no dimensions); Lambda `Errors` above 0 for StripeSync, CancelPlan and SendIssue; custom `Newsletter/RefusedSend` and `Newsletter/ReaderEmailFailed` above 0. Missing data counts as not breaching.
+- **Production access**: the request text is a placeholder in [`production-access.md`](production-access.md). Nothing is submitted.
+
+**Run order for SES** (each step changes live systems; `AUTHOR_EMAIL`, `REPLY_TO` and `ALERT_EMAIL` must not hold `REPLACE`):
+
+1. `setup-ses.sh`: creates the identity and configuration set, prints the DNS records.
+2. Paste the records into IONOS (DNS settings for `appliedailetter.com`).
+3. Wait until the script reports DKIM and MAIL FROM verified (re-run it, or `--no-wait`, to check).
+4. In SES, verify the author address as an email identity: while SES is in the sandbox it can only send to verified addresses, so proofs fail without this.
+5. `AUTHOR_EMAIL=… setup-send.sh`: sends table, `SendIssue`, bucket notification and access block, and StripeSync's SES permissions and env vars.
+6. `deploy.sh`: runs the tests, then pushes all three Lambdas (StripeSync now sends reader emails once SES has production access).
+7. `ALERT_EMAIL=… setup-alarms.sh`.
+8. Open the SNS confirmation email and confirm the subscription.
+9. Upload a draft to `drafts/` and check the proof.
+10. Submit the production-access request from `production-access.md` (filled in); AWS answers in about 96 hours.
+11. After approval, publish by uploading the same file to `issues/`.
+
+Until step 10 is approved, an `issues/` upload is refused and alarmed, and reader emails are skipped. Delete NewUser, `UnsubscribeUser` and the old HMAC parameter as listed in the Cancel go-live order.
 
 ## Decisions (2026-11-11)
 
