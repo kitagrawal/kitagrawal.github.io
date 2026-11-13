@@ -1,4 +1,4 @@
-// Shared by the StripeSync and CancelPlan Lambdas (zipped next to each index.mjs with rules.mjs).
+// Shared by the StripeSync, CancelPlan and SendIssue Lambdas (zipped next to each index.mjs with rules.mjs).
 // AWS SDK v3 ships with the Lambda Node runtime, so there is nothing to install.
 // Rows are built from signed webhook events only (see applyEvent). The one Stripe key is a restricted
 // key (rk_) with only "Subscriptions: Write"; CancelPlan uses it to schedule a cancel (cancelSubscription).
@@ -123,4 +123,19 @@ export async function saveRow(customerId, change) {
     }
   }
   throw new Error(`saveRow ${customerId}: too many concurrent updates`);
+}
+
+// Add 1 to a custom CloudWatch metric in namespace "Newsletter" (alarms read these, e.g. RefusedSend,
+// ReaderEmailFailed). The role needs cloudwatch:PutMetricData for that namespace. Never throws: a
+// metric that cannot be written is logged and must not hide the problem it reports.
+export async function countMetric(name) {
+  try {
+    const { CloudWatchClient, PutMetricDataCommand } = await import("@aws-sdk/client-cloudwatch");
+    await new CloudWatchClient().send(new PutMetricDataCommand({
+      Namespace: "Newsletter",
+      MetricData: [{ MetricName: name, Value: 1, Unit: "Count" }],
+    }));
+  } catch (e) {
+    console.error(JSON.stringify({ metric: name, error: e.message }));
+  }
 }

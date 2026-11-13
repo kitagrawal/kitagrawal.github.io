@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import {
   receivesLetters, isNewsletter, applyEvent, customerOf, cancelDecision, needsCancel, cancelForm, cancelReply,
-  cancelPageUrl, verifySignature, restrictedKey,
+  cancelPageUrl, verifySignature, restrictedKey, sendPlan,
 } from "./rules.mjs";
 
 const PROD = "prod_letter";
@@ -241,4 +241,58 @@ test("restrictedKey takes only an rk_ key, plain or inside JSON", () => {
   assert.equal(restrictedKey('{"key": "sk_live_abc"}'), null);
   assert.equal(restrictedKey(""), null);
   assert.equal(restrictedKey(undefined), null);
+});
+
+const reader = (username, email, extra = {}) => ({ username, email, email_lc: email.toLowerCase(), receives_letters: true, ...extra });
+
+test("sendPlan: a draft is a proof, in the sandbox too, with no recipients read", () => {
+  assert.deepEqual(sendPlan("drafts/2026-11-agents.md", [], false), { mode: "proof", issueId: "2026-11-agents" });
+  assert.deepEqual(sendPlan("drafts/my letter.md", undefined, true), { mode: "proof", issueId: "my letter" });
+});
+
+test("sendPlan: an issue is refused in the sandbox", () => {
+  const plan = sendPlan("issues/one.md", [reader("cus_1", "a@x.com")], false);
+  assert.equal(plan.mode, "refuse");
+  assert.equal(plan.issueId, "one");
+  assert.match(plan.reason, /sandbox/);
+  assert.equal(sendPlan("issues/one.md", [], undefined).mode, "refuse");
+});
+
+test("sendPlan: an issue with production access goes to readers who receive letters only", () => {
+  const rows = [
+    reader("cus_1", "a@x.com"),
+    reader("cus_2", "b@x.com", { receives_letters: false }),
+    reader("cus_3", "c@x.com", { receives_letters: "true" }),
+    { username: "cus_4", email: "d@x.com", receives_letters: true }, // no email_lc
+    reader("cus_5", "e@x.com", { receives_letters: undefined }),
+  ];
+  assert.deepEqual(sendPlan("issues/one.md", rows, true), {
+    mode: "send", issueId: "one", recipients: [{ customerId: "cus_1", email: "a@x.com", emailLc: "a@x.com" }],
+  });
+});
+
+test("sendPlan: one copy per email_lc, the lowest customer id wins whatever the row order", () => {
+  const rows = [reader("cus_9", "Same@X.com"), reader("cus_2", "same@x.com"), reader("cus_5", "other@x.com")];
+  const expected = [
+    { customerId: "cus_2", email: "same@x.com", emailLc: "same@x.com" },
+    { customerId: "cus_5", email: "other@x.com", emailLc: "other@x.com" },
+  ];
+  assert.deepEqual(sendPlan("issues/n.md", rows, true).recipients, expected);
+  assert.deepEqual(sendPlan("issues/n.md", [...rows].reverse(), true).recipients, expected);
+});
+
+test("sendPlan: no readers is still a send with no recipients", () => {
+  assert.deepEqual(sendPlan("issues/n.md", [], true), { mode: "send", issueId: "n", recipients: [] });
+});
+
+test("sendPlan: other keys are ignored", () => {
+  for (const key of [
+    "other/x.md", "drafts/x.txt", "drafts/x", "drafts/.md", "drafts/ .md", "issues/.md", "drafts/", "drafts/sub/x.md",
+    "issues/a/b.md", "x/drafts/a.md", "drafts/a.md/", "Drafts/a.md", "", undefined, null, 5,
+  ]) assert.deepEqual(sendPlan(key, [reader("cus_1", "a@x.com")], true), { mode: "ignore" }, String(key));
+});
+
+test("sendPlan: the issue id keeps dots and drops only the prefix and the final .md", () => {
+  assert.equal(sendPlan("drafts/v1.2.final.md", [], true).issueId, "v1.2.final");
+  assert.equal(sendPlan("issues/a.md.md", [], true).issueId, "a.md");
 });

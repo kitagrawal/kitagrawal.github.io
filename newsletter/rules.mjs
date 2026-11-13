@@ -151,3 +151,30 @@ export function verifySignature(raw, header, secret, now = Date.now() / 1000) {
 
 // The Cancel link at the bottom of a letter (send-issue and link.sh use this).
 export const cancelPageUrl = (base, customerId) => `${base}?c=${encodeURIComponent(customerId)}`;
+
+// What send-issue does for an uploaded S3 key. The handler URL-decodes the key first (events send
+// "+" for a space); here the key is plain. Returns one of:
+//   { mode: "proof", issueId }                      drafts/<name>.md: one email to the author
+//   { mode: "send", issueId, recipients }           issues/<name>.md with SES production access
+//   { mode: "refuse", issueId, reason }             issues/<name>.md while SES is in the sandbox
+//   { mode: "ignore" }                              anything else (other prefix, not .md, nested key, empty name)
+// recipients: rows with receives_letters, one per email_lc (the lowest customer id wins, so the
+// choice is the same on every run), as { customerId, email, emailLc } in customer id order.
+export function sendPlan(objectKey, rows, productionAccess) {
+  const m = typeof objectKey === "string" ? objectKey.match(/^(drafts|issues)\/([^/]+)\.md$/) : null;
+  if (!m || !m[2].trim()) return { mode: "ignore" };
+  const [, prefix, issueId] = m;
+  if (prefix === "drafts") return { mode: "proof", issueId };
+  if (productionAccess !== true) {
+    return { mode: "refuse", issueId, reason: "SES is in the sandbox: real sends are refused until production access is granted" };
+  }
+  const seen = new Set();
+  const recipients = [];
+  const eligible = (rows ?? []).filter((r) => r?.receives_letters === true && r.username && r.email && r.email_lc);
+  for (const r of eligible.sort((a, b) => (a.username < b.username ? -1 : a.username > b.username ? 1 : 0))) {
+    if (seen.has(r.email_lc)) continue;
+    seen.add(r.email_lc);
+    recipients.push({ customerId: r.username, email: r.email, emailLc: r.email_lc });
+  }
+  return { mode: "send", issueId, recipients };
+}
