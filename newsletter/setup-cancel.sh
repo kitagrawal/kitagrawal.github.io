@@ -114,8 +114,13 @@ aws apigatewayv2 update-api --api-id "$API_ID" \
 # 6. Route throttle, separate from the API's default. Other routes' settings are kept; the old
 # unsubscribe routes' are dropped.
 STAGE=$(aws apigatewayv2 get-stages --api-id "$API_ID" --query 'Items[0].StageName' --output text)
+# update-stage merges route settings, so the old routes' settings must be deleted on their own.
+for key in "POST /unsubscribe" "POST /unsubscribe/one-click"; do
+  aws apigatewayv2 delete-route-settings --api-id "$API_ID" --stage-name "$STAGE" --route-key "$key" >/dev/null 2>&1 \
+    && echo "Removed throttle for $key" || true
+done
 settings=$(aws apigatewayv2 get-stage --api-id "$API_ID" --stage-name "$STAGE" --query RouteSettings --output json |
-  python3 -c 'import json,sys; s=json.load(sys.stdin) or {}; [s.pop(k, None) for k in ("POST /unsubscribe", "POST /unsubscribe/one-click")]; s["POST /cancel"]={"ThrottlingRateLimit": 2, "ThrottlingBurstLimit": 5}; print(json.dumps(s))')
+  python3 -c 'import json,sys; raw=sys.stdin.read().strip(); s=(json.loads(raw) if raw else None) or {}; [s.pop(k, None) for k in ("POST /unsubscribe", "POST /unsubscribe/one-click")]; s["POST /cancel"]={"ThrottlingRateLimit": 2, "ThrottlingBurstLimit": 5}; print(json.dumps(s))')
 aws apigatewayv2 update-stage --api-id "$API_ID" --stage-name "$STAGE" --route-settings "$settings" \
   --query 'keys(RouteSettings)' --output text
 if [[ "$(aws apigatewayv2 get-stage --api-id "$API_ID" --stage-name "$STAGE" --query AutoDeploy --output text)" != "True" ]]; then
