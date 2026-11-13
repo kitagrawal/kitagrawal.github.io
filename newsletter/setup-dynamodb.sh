@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# One-off, safe to re-run: create the subscribers table and wire StripeSync and UnsubscribeUser
-# to it (us-east-2, profile "newsletter").
+# One-off, safe to re-run: create the subscribers table and wire StripeSync to it
+# (us-east-2, profile "newsletter"). CancelPlan's table read is set up by setup-cancel.sh.
 #
 #   NEWSLETTER_PRODUCT_ID=prod_... ./setup-dynamodb.sh
 #
 # NEWSLETTER_PRODUCT_ID is the Stripe product of the newsletter. It may be left out on a re-run
-# if both functions already have it. Use the test-mode product id while testing in test mode.
+# if StripeSync already has it. Use the test-mode product id while testing in test mode.
 #
 # Table: key "username" (string) = Stripe customer id. Other attributes are written by
-# applyEvent() and optOut() in rules.mjs (written by saveRow in lib.mjs) and need no schema. On-demand billing, point-in-time recovery and
+# applyEvent() in rules.mjs (written by saveRow in lib.mjs) and need no schema. On-demand billing, point-in-time recovery and
 # deletion protection are on.
 set -euo pipefail
 export AWS_PROFILE=newsletter AWS_REGION=us-east-2
@@ -69,6 +69,5 @@ PY
 }
 
 configure StripeSync '["dynamodb:GetItem","dynamodb:PutItem","dynamodb:DeleteItem"]' 30
-configure UnsubscribeUser '["dynamodb:GetItem","dynamodb:PutItem"]' 30
 
-echo "Done. Next: ./setup-unsubscribe.sh, then ./deploy.sh"
+echo "Done. Next: ./setup-cancel.sh, then ./deploy.sh"
