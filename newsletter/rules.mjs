@@ -99,8 +99,28 @@ export function applyEvent(row, evt, productId) {
 // The reader unsubscribed (page or one-click). nowSec is unix seconds, like Stripe's times.
 export const optOut = (row, nowSec) => finish({ ...row, email_opt_out: true, opted_out_at: nowSec }).row;
 
-// True while Stripe will still charge for the plan, so the owner must cancel it by hand.
+// True while Stripe will still charge for the plan, so the reader still has to cancel it in Stripe's portal.
 export const stillBilling = (row) => Boolean(row && LIVE(row.status) && !row.cancel_at_period_end);
+
+// Form body for Stripe's POST /v1/billing_portal/sessions: a customer-portal page that opens
+// straight on "Cancel subscription" for this subscription, with no login, and goes to returnUrl after.
+export const portalCancelForm = (customer, subscription, returnUrl) => new URLSearchParams({
+  customer,
+  return_url: returnUrl,
+  "flow_data[type]": "subscription_cancel",
+  "flow_data[subscription_cancel][subscription]": subscription,
+  "flow_data[after_completion][type]": "redirect",
+  "flow_data[after_completion][redirect][return_url]": returnUrl,
+}).toString();
+
+// A Secrets Manager value -> the Stripe restricted key in it, or null. Accepts the plain key or a
+// JSON object holding it under any field. Only rk_ keys: a full sk_ secret key is never used here.
+export function restrictedKey(secretString) {
+  const s = (secretString ?? "").trim();
+  let values = [s];
+  try { const o = JSON.parse(s); if (o && typeof o === "object") values = Object.values(o); } catch {}
+  return values.find((v) => typeof v === "string" && /^rk_(live|test)_\w+$/.test(v.trim()))?.trim() ?? null;
+}
 
 export const sameEmail = (a, b) =>
   typeof a === "string" && typeof b === "string" && a.trim() !== "" &&

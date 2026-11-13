@@ -18,8 +18,10 @@
 <!-- Hidden page: nothing links here. The letter's Unsubscribe link opens it as
      unsubscribe.html?c=<customer id>&t=<token>. The reader types their email and the page
      posts { c, t, email } to cfg.newsletter.unsubscribeApiUrl (API Gateway → UnsubscribeUser,
-     which checks the token and the email against DynamoDB, stops letters and emails the owner,
-     who cancels the plan in Stripe). -->
+     which checks the token and the email against DynamoDB and stops letters; while the plan still
+     bills, the done view's button posts again with portal: true and opens the Stripe customer-portal
+     link it gets back, already on "Cancel subscription" with no login; the StripeSync webhook
+     records the cancel). -->
 <header>
   <div class="wrap">
     <nav>
@@ -52,7 +54,7 @@
 
         <ul class="unsub-facts">
           <li><strong>Letters stop now.</strong> No more issues after you confirm.</li>
-          <li><strong>Billing stops too.</strong> I cancel your paid plan in Stripe within 2 days.</li>
+          <li><strong>Billing stops when you cancel.</strong> Next you will be sent to Stripe to cancel your paid plan.</li>
         </ul>
       </div>
 
@@ -60,7 +62,11 @@
       <div class="unsub-step unsub-done" data-show="done" tabindex="-1" id="done">
         <svg class="unsub-mark" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22"/><path d="M15 24.5l6 6 12-13"/></svg>
         <h1>You are unsubscribed</h1>
-        <p class="lead">No more letters will arrive. I will cancel your paid plan within 2 days. Thank you for reading.</p>
+        <p class="lead" id="done-lead">No more letters will arrive. Thank you for reading.</p>
+        <div class="unsub-billing" id="billing" hidden>
+          <p><strong>One more step: your paid plan is still active.</strong> Cancel it in Stripe so you are not charged again. The button opens Stripe's cancel page; confirm there.</p>
+          <button type="button" class="btn primary" id="portal">Cancel my plan in Stripe</button>
+        </div>
         <div class="btns">
           <a class="btn" href="index.html">Back to home</a>
           <a class="btn quiet" data-subscribe>Changed your mind? Subscribe again</a>
@@ -103,6 +109,38 @@
     input.disabled = btn.disabled = true; show('locked');
   };
   const fail = text => { msg.textContent = text; input.setAttribute('aria-invalid', 'true'); input.focus(); };
+  // Plan still bills: the button asks the API for a Stripe portal link that opens on "Cancel
+  // subscription" with no login (made per click: they expire within minutes). If none comes back,
+  // it falls back to the portal's login link (cfg.newsletter.portalUrl, email prefilled).
+  const portal = (Site.cfg.newsletter || {}).portalUrl || '';
+  const portalBtn = document.getElementById('portal');
+  let lastEmail = '';
+  const noPortal = () => {
+    document.getElementById('billing').hidden = true;
+    document.getElementById('done-lead').textContent = 'No more letters will arrive. Your paid plan is still active, so message me (below) and I will cancel it.';
+  };
+  const showBilling = email => { lastEmail = email; document.getElementById('billing').hidden = false; };
+  // Back from Stripe restores this page from cache: make the button usable again.
+  addEventListener('pageshow', () => { portalBtn.disabled = false; portalBtn.textContent = 'Cancel my plan in Stripe'; });
+  portalBtn.addEventListener('click', async () => {
+    portalBtn.disabled = true; portalBtn.textContent = 'Opening Stripe…';
+    let link = null, body = {};
+    try {
+      const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ c, t, email: lastEmail, portal: true }) });
+      body = await res.json().catch(() => ({}));
+      if (res.ok) link = body.portal;
+    } catch (err) { /* network error: fall back below */ }
+    if (body.billing === false) { // already cancelled (or never billed): nothing left to do
+      document.getElementById('billing').hidden = true;
+      document.getElementById('done-lead').textContent = 'No more letters will arrive, and your plan is not billing. Thank you for reading.';
+      return;
+    }
+    if (!link && /^https:\/\//.test(portal) && !/REPLACE/i.test(portal)) link = portal + '?prefilled_email=' + encodeURIComponent(lastEmail);
+    if (link) return location.assign(link);
+    portalBtn.disabled = false; portalBtn.textContent = 'Cancel my plan in Stripe';
+    noPortal();
+  });
   const clear = () => { msg.textContent = ''; input.removeAttribute('aria-invalid'); };
 
   if (!c || !t) return lock('This form works from the Unsubscribe link at the bottom of any letter. Open that link and it brings you back here, ready to confirm.');
@@ -129,6 +167,7 @@
     btn.disabled = false; btn.textContent = 'Unsubscribe'; root.removeAttribute('aria-busy');
 
     if (res && res.ok) {
+      if (body.billing) showBilling(email);
       show('done');
       document.getElementById('done').focus();
     } else if (body.error === 'email') {

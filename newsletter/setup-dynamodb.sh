@@ -71,4 +71,4 @@ PY
 configure StripeSync '["dynamodb:GetItem","dynamodb:PutItem","dynamodb:DeleteItem"]' 30
 configure UnsubscribeUser '["dynamodb:GetItem","dynamodb:PutItem"]' 30
 
-echo "Done. Next: OWNER_EMAIL=you@example.com ./setup-unsubscribe.sh, then ./deploy.sh"
+echo "Done. Next: ./setup-unsubscribe.sh, then ./deploy.sh"

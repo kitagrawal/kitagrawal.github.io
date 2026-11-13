@@ -12,7 +12,7 @@ Static portfolio site, hosted on GitHub Pages. No build step or dependencies.
 | `404.html` | Custom "page not found" page (shares `base.css` and `pages.css`; every URL is root-absolute because GitHub Pages serves it at any missing path) |
 | `book.html` | Consultation booking page (Cal.com popup) |
 | `terms.html`, `privacy.html`, `consent.html`, `contact.html` | Legal pages for the letter and consultations: Terms & Conditions, Privacy Policy, Email & Cookie Consent, Contact & Concerns (support@appliedailetter.com). Each footer links all four; other pages link Terms, Privacy and Contact. When one changes materially, update its effective date and email subscribers |
-| `unsubscribe.html` | Leave The Applied AI Letter: reached only from the signed link in each letter (`?c=&t=`; not linked from the site, marked `noindex`). The reader confirms their email; the `UnsubscribeUser` Lambda stops letters and emails the owner, who cancels the plan in Stripe |
+| `unsubscribe.html` | Leave The Applied AI Letter: reached only from the signed link in each letter (`?c=&t=`; not linked from the site, marked `noindex`). The reader confirms their email; the `UnsubscribeUser` Lambda stops letters; while the plan still bills, its cancel button opens Stripe's customer portal on "Cancel subscription" with no login (falling back to the portal's login link) |
 | `config.js` | **Edit this**: Cal.com link, newsletter subscribe URL and the unsubscribe API URL |
 | `base.css` | Styles every page shares: colour tokens, header, buttons, consultation cards, price, rows, footer |
 | `index.css`, `pages.css` | Page-specific styles: `index.css` for the home page, `pages.css` for book, the legal pages, unsubscribe and 404 |
