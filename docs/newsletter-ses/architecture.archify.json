@@ -35,7 +35,7 @@
         150,
         64
       ],
-      "tag": "hidden unsubscribe.html"
+      "tag": "hidden cancel page"
     },
     {
       "id": "paylink",
@@ -55,7 +55,7 @@
       "id": "billing",
       "type": "external",
       "label": "Stripe Billing",
-      "sublabel": "subscriptions + API",
+      "sublabel": "subscriptions",
       "pos": [
         760,
         40
@@ -140,9 +140,9 @@
       "tag": "verifies signature"
     },
     {
-      "id": "unsub",
+      "id": "cancel",
       "type": "backend",
-      "label": "UnsubscribeUser",
+      "label": "CancelPlan",
       "sublabel": "Lambda, Node 22",
       "pos": [
         1000,
@@ -152,7 +152,7 @@
         150,
         64
       ],
-      "tag": "HMAC token"
+      "tag": "customer id only"
     },
     {
       "id": "table",
@@ -170,10 +170,10 @@
       "tag": "key: customer id"
     },
     {
-      "id": "gw-unsub",
+      "id": "gw-cancel",
       "type": "cloud",
       "label": "API Gateway",
-      "sublabel": "POST /unsubscribe",
+      "sublabel": "POST /cancel",
       "pos": [
         1000,
         480
@@ -181,8 +181,7 @@
       "size": [
         150,
         64
-      ],
-      "tag": "+ /one-click"
+      ]
     },
     {
       "id": "author",
@@ -256,35 +255,6 @@
         150,
         64
       ]
-    },
-    {
-      "id": "sns",
-      "type": "cloud",
-      "label": "SNS",
-      "sublabel": "newsletter-unsubscribes",
-      "pos": [
-        1240,
-        340
-      ],
-      "size": [
-        150,
-        64
-      ],
-      "tag": "owner alert"
-    },
-    {
-      "id": "owner",
-      "type": "external",
-      "label": "Owner",
-      "sublabel": "email inbox",
-      "pos": [
-        1000,
-        40
-      ],
-      "size": [
-        150,
-        64
-      ]
     }
   ],
   "boundaries": [
@@ -305,13 +275,12 @@
         "ssm",
         "newuser",
         "sync",
-        "unsub",
+        "cancel",
         "table",
-        "gw-unsub",
+        "gw-cancel",
         "issues",
         "send",
-        "ses",
-        "sns"
+        "ses"
       ]
     }
   ],
@@ -382,57 +351,37 @@
       "label": "UpdateItem"
     },
     {
-      "id": "unsub-link",
+      "id": "cancel-link",
       "from": "inbox",
       "to": "site",
-      "label": "clicks Unsubscribe (?c&t)",
+      "label": "clicks Cancel link (?c)",
       "variant": "emphasis"
     },
     {
-      "id": "unsub-post",
+      "id": "cancel-post",
       "from": "site",
-      "to": "gw-unsub",
-      "label": "POST {c, t, email}",
+      "to": "gw-cancel",
+      "label": "POST {c}",
       "variant": "emphasis"
     },
     {
-      "id": "invoke-unsub",
-      "from": "gw-unsub",
-      "to": "unsub",
+      "id": "invoke-cancel",
+      "from": "gw-cancel",
+      "to": "cancel",
       "label": "invoke"
     },
     {
-      "id": "check-unsub",
-      "from": "unsub",
+      "id": "read-row",
+      "from": "cancel",
       "to": "table",
-      "label": "GetItem, PutItem opt-out"
+      "label": "GetItem"
     },
     {
-      "id": "alert",
-      "from": "unsub",
-      "to": "sns",
-      "label": "publish if still billing",
-      "variant": "security"
-    },
-    {
-      "id": "alert-mail",
-      "from": "sns",
-      "to": "owner",
-      "label": "email: cancel sub_\u2026"
-    },
-    {
-      "id": "manual-cancel",
-      "from": "owner",
+      "id": "cancel-stripe",
+      "from": "cancel",
       "to": "billing",
-      "label": "cancels in Dashboard",
-      "variant": "dashed"
-    },
-    {
-      "id": "one-click",
-      "from": "inbox",
-      "to": "gw-unsub",
-      "label": "one-click header POST",
-      "variant": "dashed"
+      "label": "cancel_at_period_end",
+      "variant": "emphasis"
     },
     {
       "id": "upload",
@@ -474,7 +423,7 @@
       "title": "Stripe owns state",
       "items": [
         "The table is built from signed webhook events only; username holds the Stripe customer id",
-        "AWS holds no Stripe API key: nothing in AWS can read or change Stripe",
+        "StripeSync uses no Stripe key; the one restricted key (Subscriptions: Write only) belongs to CancelPlan, which reads the table and never writes it",
         "Each half of a row keeps its event time, so repeated or out-of-order events are harmless"
       ]
     },
@@ -483,27 +432,27 @@
       "title": "Endpoints, built",
       "items": [
         "StripeSync: the one Stripe webhook (checkout, subscription and customer events)",
-        "UnsubscribeUser: POST /unsubscribe and /unsubscribe/one-click, 2 req/s",
+        "CancelPlan: POST /cancel, 2 req/s",
         "Code in newsletter/, pushed with newsletter/deploy.sh"
       ]
     },
     {
       "dot": "amber",
-      "title": "Unsubscribe",
+      "title": "Cancel",
       "items": [
-        "Letter link opens the hidden unsubscribe.html with ?c=<customer id>&t=<HMAC token>",
-        "Reader types their email; UnsubscribeUser checks the token, then the email against the DynamoDB row",
-        "Letters stop at once (email_opt_out); SNS emails the owner while the plan still bills",
-        "Owner cancels in the Stripe Dashboard within 2 days; the webhook records it"
+        "The Cancel link at the bottom of every letter opens the hidden cancel page with ?c=<customer id>; the id alone is the proof",
+        "Reader presses Confirm; CancelPlan reads the DynamoDB row and sets cancel_at_period_end in Stripe",
+        "Letters continue until the paid period ends; the webhook records the change",
+        "Letters carry no List-Unsubscribe headers"
       ]
     },
     {
       "dot": "rose",
       "title": "Secrets in SSM (us-east-2)",
       "items": [
-        "StripeSync webhook signing secret and the unsubscribe HMAC key",
+        "StripeSync webhook signing secret",
         "Each Lambda can read only the parameters it uses",
-        "No Stripe API key anywhere; nothing secret in the repo or config.js"
+        "The one Stripe key (rk_, Subscriptions: Write) is in Secrets Manager; nothing secret in the repo or config.js"
       ]
     },
     {
