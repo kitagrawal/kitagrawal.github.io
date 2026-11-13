@@ -21,9 +21,9 @@ The static site does not change: every Subscribe button already goes to the Stri
 | DynamoDB `subscribers` table | A projection of Stripe state that the sender can read fast. It can be rebuilt from Stripe at any time. |
 | S3 `issues` bucket | The author uploads `issue.md`; the upload starts a send. |
 | `send-issue` Lambda | Renders the Markdown to HTML and text, reads the active subscribers, sends one email each through SES. |
-| `unsubscribe` Lambda (API Gateway) | Stops letters at once and emails the owner, who cancels the plan in the Stripe Dashboard; the webhook then records the cancellation. |
+| `unsubscribe` Lambda (API Gateway) | Stops letters at once and tells the page whether the plan still bills; the reader then cancels in Stripe's customer portal and the webhook records it. |
 | Amazon SES | Sends from a verified custom domain with DKIM. The account-level suppression list blocks addresses that bounced or complained. |
-| SSM Parameter Store | Webhook signing secret and unsubscribe HMAC key (SecureString). No Stripe API key (decision 2026-11-12). |
+| SSM Parameter Store, Secrets Manager | SSM: webhook signing secret and unsubscribe HMAC key (SecureString). Secrets Manager `applied-ai-letter/stripe`: a restricted Stripe key that can only open customer-portal sessions (decisions 2026-11-12 and 2026-11-13). |
 
 All AWS parts live in one account and one region, deployed with one AWS SAM template.
 
@@ -69,15 +69,15 @@ The Lambda paces itself to the account's SES send rate (read it with `GetAccount
 
 ### Unsubscribe
 
-Path: the reader clicks **Unsubscribe** in a letter → the hidden `unsubscribe.html` page → types their email → API Gateway → `UnsubscribeUser` → the DynamoDB table, plus an SNS email to the owner → the owner cancels in Stripe → Stripe's webhook → `StripeSync` → the table.
+Path: the reader clicks **Unsubscribe** in a letter → the hidden `unsubscribe.html` page → types their email → API Gateway → `UnsubscribeUser` → the DynamoDB table → (if billing) the cancel button → `UnsubscribeUser` again → Stripe's customer portal, open on "Cancel subscription" with no login, where the reader confirms → Stripe's webhook → `StripeSync` → the table.
 
 1. The link is `https://kitagrawal.github.io/unsubscribe.html?c=<customer id>&t=<HMAC of the id>`. The token proves the caller has the letter; the page removes it from the address bar and sends no referrer.
 2. The page posts `{ c, t, email }` to `POST /unsubscribe`. The Lambda checks the token, reads the row for `c` and compares the email (case and spaces ignored). A bad token answers `400 link`, a wrong email `400 email`, an already-off reader `200` and no email.
-3. Otherwise, while the plan still bills, it publishes to the SNS topic `newsletter-unsubscribes` (the owner's email: reader, subscription, Dashboard link), then sets `email_opt_out` on the row so `receives_letters` is false at once. If SNS fails it answers `502` and changes nothing, so a retry sends the email again.
-4. The owner cancels the plan in the Stripe Dashboard within 2 days (the page promises this). The `customer.subscription.updated`/`deleted` webhooks bring the change back; the opt-out stays.
+3. Otherwise it sets `email_opt_out` on the row so `receives_letters` is false at once and answers `{done, billing}`; `billing` is true while the plan still bills. If the write fails it answers `502`.
+4. When `billing` is true the page shows a cancel button. It posts `{ c, t, email, portal: true }`; the Lambda checks the same proof and, while the plan still bills, creates a portal session with the restricted key (`flow_data.type = subscription_cancel` for the row's `subscription_id`, returning to the site) and answers `{billing, portal}`. The page opens that link, made per click because it expires within minutes; if it is null (no key, Stripe error) the page falls back to the login link (`portalUrl`, email prefilled). The `customer.subscription.updated`/`deleted` webhooks bring the change back; the opt-out stays. A reader who skips this stays billed, so the page says so plainly.
 5. The mail headers point at `POST /unsubscribe/one-click?c&t` (RFC 8058): token only, same effect. Link scanners do not send POSTs, so there is no GET route.
 
-Both routes have their own throttle (2 req/s, burst 5) and CORS allows only the site and `http://localhost:8000`. There is no Stripe portal sign-in. The owner can also unsubscribe a reader in the Stripe Dashboard (cancel, or metadata `email_opt_out=true`).
+Both routes have their own throttle (2 req/s, burst 5) and CORS allows only the site and `http://localhost:8000`. The reader never signs in to the Stripe portal. The owner can also unsubscribe a reader in the Stripe Dashboard (cancel, or metadata `email_opt_out=true`).
 
 **Who gets a letter** (`applyEvent` and `receivesLetters` in `newsletter/rules.mjs`): status `active`, `trialing` or `past_due`, not `cancel_at_period_end`, `cancel_at`, `pause_collection` or metadata `email_opt_out`, the row not opted out on the page, and an email on file. The table stores the result as `receives_letters`; `send-issue` reads only that, and dedupes by `email_lc` (a Payment Link creates a new customer at each checkout, so one email can have two rows).
 
@@ -137,12 +137,14 @@ The table `stripe-sync-subscription-status` uses the key `username`, which holds
 Setup scripts (one-off, safe to re-run, all touch live AWS):
 
 - `setup-dynamodb.sh`: table; `NEWSLETTER_PRODUCT_ID` and `TABLE_NAME` on both functions; StripeSync may `GetItem`/`PutItem`/`DeleteItem`, UnsubscribeUser may `GetItem`/`PutItem`; removes `STRIPE_KEY_PARAM`.
-- `setup-unsubscribe.sh`: the two POST routes, the route throttle, CORS; removes `GET /unsubscribe`; the SNS topic `newsletter-unsubscribes` with `OWNER_EMAIL` subscribed, and `sns:Publish` for UnsubscribeUser.
+- `setup-unsubscribe.sh`: the two POST routes, the route throttle, CORS; removes `GET /unsubscribe`; removes the old SNS wiring.
 - `link.sh <cus_id> [page]`: prints a test unsubscribe link.
 
 **Test mode** runs as a parameter swap on the same functions: point `WEBHOOK_SECRET_PARAM` and `NEWSLETTER_PRODUCT_ID` at test-mode values (a test-mode newsletter product and price), test, then swap back. `stripe trigger` uses a fixture product the filter ignores, so test with a real checkout of the test product.
 
-**Go-live order** (each step changes live systems): `NEWSLETTER_PRODUCT_ID=prod_… setup-dynamodb.sh` → `OWNER_EMAIL=… setup-unsubscribe.sh` (confirm the SNS email) → `deploy.sh` → add the StripeSync endpoint in Stripe with the 6 events and store its `whsec_` in SSM → set `unsubscribeApiUrl` in `config.js` → delete NewUser.
+**Go-live order** (each step changes live systems): `NEWSLETTER_PRODUCT_ID=prod_… setup-dynamodb.sh` → `setup-unsubscribe.sh` → `deploy.sh` → add the StripeSync endpoint in Stripe with the 6 events and store its `whsec_` in SSM → set `unsubscribeApiUrl` in `config.js` → delete NewUser.
+
+Secrets Manager `applied-ai-letter/stripe` (set by hand): the restricted Stripe key (`rk_live_…`) with only **Customer portal: Write**, plain or in JSON; `UnsubscribeUser` refuses an `sk_` key.
 
 SSM SecureString parameters (set by hand, not in code):
 
@@ -157,6 +159,7 @@ Not built yet: SES domain, `send-issue` (it builds each letter's link with `unsu
 
 - **Sending domain**: buy a domain for the letter. It is step 1 of the build order.
 - **One-click unsubscribe**: letters stop at once and the subscription cancels at the end of the paid period. No refunds.
-- **No Stripe API key in AWS** (2026-11-12): Stripe → AWS by webhook only. Unsubscribe stops letters and emails the owner, who cancels the plan in the Stripe Dashboard within 2 days.
+- **No Stripe API key in AWS** (2026-11-12): Stripe → AWS by webhook only. Unsubscribe stops letters; the reader cancels billing themselves in Stripe's customer portal, so there is no owner email.
+- **No-login cancel** (2026-11-13, narrows the above): `UnsubscribeUser` holds one restricted key with only "Customer portal: Write" to open the portal on "Cancel subscription" without Stripe's emailed login code. It cannot read or change customers or subscriptions; rows still come only from the webhook.
 - **Code home**: a `newsletter/` folder in this repo (Lambdas, SAM template, backfill script, its own `package.json`). GitHub Pages will serve these files; they hold no secrets. Update `CLAUDE.md` and `README.md` when it lands, because the repo is no longer "no package manager".
 - **PR #8** (formerly #7): keep its unsubscribe help page and the `book.html` script fix; drop the Buttondown docs.

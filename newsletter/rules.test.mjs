@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import {
   receivesLetters, isNewsletter, applyEvent, customerOf, optOut, stillBilling, sameEmail,
-  verifySignature, unsubscribeToken, checkToken, unsubscribePageUrl,
+  verifySignature, unsubscribeToken, checkToken, unsubscribePageUrl, portalCancelForm, restrictedKey,
 } from "./rules.mjs";
 
 const PROD = "prod_letter";
@@ -99,7 +99,7 @@ test("applyEvent: cancel at period end, cancel_at, pause, past_due", () => {
 test("optOut: letters stop and stay stopped through later webhooks, including the owner's cancel", () => {
   let row = optOut(play(checkout(), subEv()), 1100);
   assert.equal(row.receives_letters, false);
-  assert.equal(stillBilling(row), true); // owner still has to cancel in Stripe
+  assert.equal(stillBilling(row), true); // billing continues until the reader cancels in Stripe's portal
   for (const e of [subEv({}, 1200), subEv({ cancel_at_period_end: true }, 1300), subEv({ status: "canceled" }, 1400, "customer.subscription.deleted")]) {
     row = applyEvent(row, e, PROD).row;
     assert.equal(row.email_opt_out, true);
@@ -159,4 +159,24 @@ test("checkToken and unsubscribePageUrl", () => {
     unsubscribePageUrl("https://kitagrawal.github.io/unsubscribe.html", "cus_ABC", key),
     `https://kitagrawal.github.io/unsubscribe.html?c=cus_ABC&t=${t}`,
   );
+});
+
+test("portalCancelForm opens the cancel flow for one subscription and returns to the site", () => {
+  const p = new URLSearchParams(portalCancelForm("cus_1", "sub_1", "https://kitagrawal.github.io/"));
+  assert.equal(p.get("customer"), "cus_1");
+  assert.equal(p.get("flow_data[type]"), "subscription_cancel");
+  assert.equal(p.get("flow_data[subscription_cancel][subscription]"), "sub_1");
+  assert.equal(p.get("flow_data[after_completion][type]"), "redirect");
+  assert.equal(p.get("flow_data[after_completion][redirect][return_url]"), "https://kitagrawal.github.io/");
+  assert.equal(p.get("return_url"), "https://kitagrawal.github.io/");
+});
+
+test("restrictedKey takes only an rk_ key, plain or inside JSON", () => {
+  assert.equal(restrictedKey("rk_live_abc123"), "rk_live_abc123");
+  assert.equal(restrictedKey(' {"portal_key": "rk_test_x9"} '), "rk_test_x9");
+  assert.equal(restrictedKey('{"secret": "sk_live_x", "restricted": "rk_live_y"}'), "rk_live_y");
+  assert.equal(restrictedKey("sk_live_abc123"), null);
+  assert.equal(restrictedKey('{"key": "sk_live_abc"}'), null);
+  assert.equal(restrictedKey(""), null);
+  assert.equal(restrictedKey(undefined), null);
 });

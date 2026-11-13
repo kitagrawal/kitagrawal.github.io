@@ -2,18 +2,20 @@
 # One-off, safe to re-run: put UnsubscribeUser's two routes on its HTTP API, give them their own
 # low throttle, and allow the site's origin through CORS (us-east-2, profile "newsletter").
 #
-#   OWNER_EMAIL=you@example.com ./setup-unsubscribe.sh   # finds the API that integrates UnsubscribeUser
-#   API_ID=abc123 OWNER_EMAIL=... ./setup-unsubscribe.sh
+#   ./setup-unsubscribe.sh                  # finds the API that integrates UnsubscribeUser
+#   API_ID=abc123 ./setup-unsubscribe.sh
 #
-# OWNER_EMAIL gets an SNS email for each unsubscribe whose plan still bills, so the owner can cancel
-# it in the Stripe Dashboard (there is no Stripe API key). Confirm the subscription email AWS sends.
-# It may be left out on a re-run once the topic has a subscription.
+# No owner email: while a plan still bills, the page's cancel button gets a Stripe customer-portal link
+# from the Lambda that opens on "Cancel subscription" with no login, and StripeSync's webhook records
+# the cancel. That needs one restricted Stripe key (rk_) with only "Customer portal: Write", which you
+# store yourself in Secrets Manager as applied-ai-letter/stripe (plain key, or JSON holding it). This
+# script points the Lambda at it and lets it read that one secret. It also removes the earlier SNS owner-email wiring if it exists.
 #
 # Routes: POST /unsubscribe (the hidden page), POST /unsubscribe/one-click (List-Unsubscribe-Post).
 # The old GET /unsubscribe confirm page is removed. Prints the URL for config.js.
 set -euo pipefail
 export AWS_PROFILE=newsletter AWS_REGION=us-east-2
-FN=UnsubscribeUser TOPIC=newsletter-unsubscribes
+FN=UnsubscribeUser
 ORIGINS="https://kitagrawal.github.io,http://localhost:8000"
 ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
 
@@ -66,28 +68,32 @@ if [[ "$(aws apigatewayv2 get-stage --api-id "$API_ID" --stage-name "$STAGE" --q
   aws apigatewayv2 create-deployment --api-id "$API_ID" --stage-name "$STAGE" --query DeploymentStatus --output text
 fi
 
-# 6. SNS topic that emails the owner; the function may publish to it and nothing else
-TOPIC_ARN=$(aws sns create-topic --name "$TOPIC" --tags Key=project,Value=newsletter --query TopicArn --output text)
-if [[ -n "${OWNER_EMAIL:-}" ]]; then
-  if aws sns list-subscriptions-by-topic --topic-arn "$TOPIC_ARN" --query 'Subscriptions[].Endpoint' --output text | grep -qxF "$OWNER_EMAIL"; then
-    echo "$OWNER_EMAIL already subscribed to $TOPIC"
-  else
-    aws sns subscribe --topic-arn "$TOPIC_ARN" --protocol email --notification-endpoint "$OWNER_EMAIL" >/dev/null
-    echo "Subscribed $OWNER_EMAIL to $TOPIC: confirm the email AWS just sent"
-  fi
-elif [[ -z "$(aws sns list-subscriptions-by-topic --topic-arn "$TOPIC_ARN" --query 'Subscriptions[0].Endpoint' --output text | grep -v None)" ]]; then
-  echo "Warning: $TOPIC has no subscriber; set OWNER_EMAIL and re-run" >&2
-fi
+# 6. The portal key: the Lambda may read the /newsletter/unsubscribe* parameters and the one Stripe
+# secret, and its env names the secret and where Stripe returns the reader. Also removes the old
+# owner-email wiring (safe if never there).
+PORTAL_SECRET_ID=applied-ai-letter/stripe
+RETURN_URL=https://kitagrawal.github.io/
+SECRET_ARN=$(aws secretsmanager describe-secret --secret-id "$PORTAL_SECRET_ID" --query ARN --output text 2>/dev/null || true)
 role=$(aws lambda get-function-configuration --function-name "$FN" --query Role --output text)
-aws iam put-role-policy --role-name "${role##*/}" --policy-name sns-unsubscribes --policy-document "{
+aws iam delete-role-policy --role-name "${role##*/}" --policy-name sns-unsubscribes 2>/dev/null || true
+aws iam put-role-policy --role-name "${role##*/}" --policy-name ssm-unsubscribe-params --policy-document "{
   \"Version\": \"2012-10-17\",
-  \"Statement\": [{\"Effect\": \"Allow\", \"Action\": \"sns:Publish\", \"Resource\": \"$TOPIC_ARN\"}]
+  \"Statement\": [{\"Effect\": \"Allow\", \"Action\": \"ssm:GetParameter\",
+    \"Resource\": \"arn:aws:ssm:$AWS_REGION:$ACCOUNT:parameter/newsletter/unsubscribe*\"}]
 }"
+if [[ -n "$SECRET_ARN" ]]; then
+  aws iam put-role-policy --role-name "${role##*/}" --policy-name stripe-portal-secret --policy-document "{
+    \"Version\": \"2012-10-17\",
+    \"Statement\": [{\"Effect\": \"Allow\", \"Action\": \"secretsmanager:GetSecretValue\", \"Resource\": \"$SECRET_ARN\"}]
+  }"
+else
+  echo "Note: secret $PORTAL_SECRET_ID not found; until it exists, the cancel button falls back to the portal login link"
+fi
 vars=$(aws lambda get-function-configuration --function-name "$FN" --query Environment.Variables --output json)
-env=$(python3 -c 'import json,sys; v=json.loads(sys.argv[1]) or {}; v["UNSUBSCRIBE_TOPIC_ARN"]=sys.argv[2]; print(json.dumps({"Variables": v}))' "$vars" "$TOPIC_ARN")
+env=$(python3 -c 'import json,sys; v=json.loads(sys.argv[1]) or {}; v.pop("UNSUBSCRIBE_TOPIC_ARN", None); v.pop("STRIPE_PORTAL_KEY_PARAM", None); v["STRIPE_PORTAL_SECRET_ID"]=sys.argv[2]; v["PORTAL_RETURN_URL"]=sys.argv[3]; print(json.dumps({"Variables": v}))' "$vars" "$PORTAL_SECRET_ID" "$RETURN_URL")
 aws lambda update-function-configuration --function-name "$FN" --environment "$env" --query LastUpdateStatus --output text >/dev/null
 aws lambda wait function-updated-v2 --function-name "$FN"
-echo "$FN may publish to $TOPIC_ARN"
+echo "$FN: no SNS topic; portal key from secret $PORTAL_SECRET_ID"
 
 base=$(aws apigatewayv2 get-api --api-id "$API_ID" --query ApiEndpoint --output text)
 [[ "$STAGE" == '$default' ]] || base="$base/$STAGE"
