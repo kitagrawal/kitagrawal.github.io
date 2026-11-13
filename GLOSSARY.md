@@ -31,3 +31,15 @@ _Avoid_: Billing cycle, term
 **Opt-out** (legacy):
 An older state where a reader stopped letters but kept paying. No longer possible; existing ones are cancelled at period end.
 _Avoid_: Using it for new behaviour
+
+**Draft**:
+A letter the author has uploaded for checking, not for sending. A draft goes only to the author, as a proof.
+_Avoid_: Preview, test send
+
+**Proof**:
+The one email a draft produces, sent only to the author, to check how the letter looks before it goes to readers.
+_Avoid_: Test letter
+
+**Reader email**:
+An email to a single reader about their own plan: the welcome when the plan first goes live, the note when a cancel is scheduled, and the goodbye when the plan ends. Each is sent at most once.
+_Avoid_: Lifecycle email, notification, transactional email
