@@ -487,3 +487,10 @@ test("applyEvent: resuming a cancel clears the note; the claim stays while the c
   assert.equal(applyEvent(noted, subEv({ cancel_at_period_end: true }, 1300), PROD).row.cancel_noted_at, "c");
   assert.equal("cancel_noted_at" in applyEvent(noted, subEv({ cancel_at_period_end: false }, 1300), PROD).row, false);
 });
+
+test("readerEmail: a plan that starts incomplete is welcomed when it goes active, in either event order", () => {
+  const created = subEv({ status: "incomplete" }, 1000, "customer.subscription.created");
+  assert.deepEqual(run(created, checkout("Reader@Example.com", 1100), subEv({}, 1200)).dues, [null, null, "welcome"]);
+  assert.deepEqual(run(checkout("Reader@Example.com", 900), created, subEv({}, 1200)).dues, [null, null, "welcome"]);
+  assert.deepEqual(run(created, checkout("Reader@Example.com", 1100), subEv({}, 1200), subEv({}, 1300)).dues, [null, null, "welcome", null]);
+});

@@ -30,7 +30,11 @@ const SAFETY_MS = 20000; // stop sending this long before the timeout; a re-uplo
 const NOT_SENT = new Set([
   "TooManyRequestsException", "LimitExceededException", "ThrottlingException", "SendingPausedException",
   "MailFromDomainNotVerifiedException", "NotFoundException", "BadRequestException", "AccessDeniedException",
+  "AccountSuspendedException",
 ]);
+// Several failures in a row point at an account-wide problem (identity, DKIM, account): stop the run so it
+// does not claim the whole list. SendIncomplete alarms; see PLAN.md for clearing the failed claims.
+const MAX_FAILURES_IN_A_ROW = 5;
 
 const env = () => {
   const e = Object.fromEntries(["SENDS_TABLE", "AUTHOR_EMAIL", "REPLY_TO", "FROM", "CONFIG_SET", "CANCEL_PAGE"].map((k) => [k, process.env[k]]));
@@ -97,6 +101,7 @@ async function publish(cfg, bucket, key, context) {
   const issueId = plan.issueId;
   const interval = 1000 / (account.SendQuota?.MaxSendRate > 0 ? account.SendQuota.MaxSendRate : 1);
   const stats = { sent: 0, skipped: 0, failed: 0, stopped: false };
+  let failuresInARow = 0;
   let next = Date.now();
   for (const r of plan.recipients) {
     if (context?.getRemainingTimeInMillis?.() < SAFETY_MS) { stats.stopped = true; break; }
@@ -120,6 +125,7 @@ async function publish(cfg, bucket, key, context) {
       id = (await send(cfg, r.email, mail)).MessageId;
     } catch (e) {
       stats.failed++;
+      failuresInARow++;
       console.error(JSON.stringify({ issueId, customerId: r.customerId, error: e.name, message: e.message }));
       try {
         if (NOT_SENT.has(e.name)) await db.send(new DeleteCommand({ TableName: cfg.SENDS_TABLE, Key })); // a re-upload retries this reader
@@ -135,8 +141,14 @@ async function publish(cfg, bucket, key, context) {
       } catch (e2) {
         console.error(JSON.stringify({ issueId, customerId: r.customerId, error: "could not update the claim", message: e2.message }));
       }
+      if (failuresInARow >= MAX_FAILURES_IN_A_ROW) {
+        stats.stopped = true;
+        console.error(JSON.stringify({ issueId, error: `stopped after ${failuresInARow} failures in a row` }));
+        break;
+      }
       continue;
     }
+    failuresInARow = 0;
     stats.sent++;
     try {
       await db.send(new UpdateCommand({

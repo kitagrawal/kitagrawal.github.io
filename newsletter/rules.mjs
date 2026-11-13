@@ -191,7 +191,8 @@ export function sendPlan(objectKey, rows, productionAccess) {
 // row before (or undefined) and after the write. Returns { kind, claim } or null:
 //   welcome            claim welcomed_at     the write makes a plan live with an email, no opt-out, no welcome yet,
 //                                            and it is a new reader or plan: there was no row before, or the
-//                                            subscription id changed, or the row before had no email. A pause then
+//                                            subscription id changed, the row before had no email, or the plan
+//                                            was still incomplete (never live). A pause then
 //                                            resume, or past_due then active, on the same subscription with the
 //                                            email already on file gives none
 //   cancel-scheduled   claim cancel_noted_at the write is the transition that schedules a cancel: the row before
@@ -199,7 +200,8 @@ export function sendPlan(objectKey, rows, productionAccess) {
 //                                            needs current_period_end for the "letters continue until" date.
 //                                            applyEvent clears cancel_noted_at when the cancel is resumed, so
 //                                            cancel, resume, cancel notes twice. A cancel scheduled before this
-//                                            code was deployed gets no note
+//                                            code was deployed, or one scheduled while the plan was paused, gets
+//                                            no note
 //   goodbye            claim goodbye_at      the plan ended, no goodbye yet, and the reader was welcomed or the
 //                      write is the one that ended a live plan (a row that never went live gets none). Never for a
 //                      reader with the legacy email_opt_out flag (before or after the write)
@@ -214,7 +216,10 @@ export function readerEmail(oldRow, newRow, productionAccess) {
   const live = newRow.sub_live === true && newRow.email_opt_out !== true;
   // Both event orders give exactly one welcome: subscription first (the row before had no email) or the
   // checkout email first (the row before had no subscription id).
-  const newReaderOrPlan = !oldRow || oldRow.subscription_id !== newRow.subscription_id || !oldRow.email_lc;
+  // A plan that starts incomplete (async payment, or the card payment confirmed after checkout) has never
+  // been live, so its first live write still welcomes.
+  const newReaderOrPlan = !oldRow || oldRow.subscription_id !== newRow.subscription_id || !oldRow.email_lc ||
+    !oldRow.status || oldRow.status === "incomplete";
   if (live && newReaderOrPlan && !newRow.welcomed_at) return { kind: "welcome", claim: "welcomed_at" };
   if (live && oldRow && oldRow.cancel_at_period_end !== true && newRow.cancel_at_period_end === true &&
       !newRow.cancel_noted_at && Number.isFinite(newRow.current_period_end)) {
