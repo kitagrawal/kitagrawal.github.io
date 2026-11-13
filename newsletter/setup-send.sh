@@ -128,7 +128,10 @@ fi
 aws lambda wait function-updated-v2 --function-name "$FN"
 # One run at a time: S3 can deliver an upload twice or two uploads at once, and two runs would race over the
 # same readers (the claims keep a letter from going twice, but the runs would also share the SES send rate).
-aws lambda put-function-concurrency --function-name "$FN" --reserved-concurrent-executions 1 >/dev/null
+# AWS keeps at least 10 executions unreserved, so on an account whose limit is 10 (new accounts) this fails:
+# warn and carry on; raise the Lambda "Concurrent executions" quota, then re-run.
+aws lambda put-function-concurrency --function-name "$FN" --reserved-concurrent-executions 1 >/dev/null 2>&1 \
+  || echo "WARNING: could not reserve concurrency 1 for $FN (account concurrency limit too low?). Raise the Lambda 'Concurrent executions' quota, then re-run. Until then, upload one letter at a time." >&2
 FN_ARN=$(aws lambda get-function --function-name "$FN" --query Configuration.FunctionArn --output text)
 echo "$FN: ready (author $AUTHOR_EMAIL, replies to $REPLY_TO)"
 
