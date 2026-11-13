@@ -29,20 +29,22 @@
 </header>
 
 <main>
-  <section class="unsub" id="unsub" data-state="nolink">
+  <section class="unsub" id="unsub" data-state="locked">
     <div class="wrap">
 
-      <!-- ready / sending / error: the form -->
-      <div class="unsub-step" data-show="ready">
+      <!-- form: always shown; enabled only with the letter's link and a configured API -->
+      <div class="unsub-step" data-show="form">
         <h1>Unsubscribe</h1>
         <p class="lead">Type the email address The Applied AI Letter was sent to. That confirms it is you, and the letters stop.</p>
+
+        <p class="unsub-note" id="unsub-note" hidden></p>
 
         <form class="unsub-form" id="unsub-form" novalidate>
           <label for="email">Email address</label>
           <div class="unsub-row">
             <input id="email" name="email" type="email" inputmode="email" autocomplete="email"
-                   autocapitalize="off" spellcheck="false" required aria-describedby="email-msg">
-            <button class="btn primary" type="submit">Unsubscribe</button>
+                   autocapitalize="off" spellcheck="false" required aria-describedby="unsub-note email-msg" disabled>
+            <button class="btn primary" type="submit" disabled>Unsubscribe</button>
           </div>
           <p class="unsub-msg" id="email-msg" role="alert"></p>
         </form>
@@ -62,18 +64,6 @@
           <a class="btn" href="index.html">Back to home</a>
           <a class="btn quiet" data-subscribe>Changed your mind? Subscribe again</a>
         </div>
-      </div>
-
-      <!-- nolink: opened without the letter's link, or with a bad one -->
-      <div class="unsub-step" data-show="nolink">
-        <h1>Unsubscribe from a letter</h1>
-        <p class="lead" id="nolink-text">Open the Unsubscribe link at the bottom of any letter. It brings you back here with your address ready to confirm.</p>
-      </div>
-
-      <!-- off: unsubscribeApiUrl not set in config.js -->
-      <div class="unsub-step" data-show="off">
-        <h1>Unsubscribe from a letter</h1>
-        <p class="lead">Online unsubscribe is not switched on yet. Send me a message and I will take you off the list myself.</p>
       </div>
 
       <p class="unsub-help">Something not working, or still see a charge? Message me on <a href="https://www.linkedin.com/in/peacefulhermit" target="_blank" rel="noopener">LinkedIn</a> and I will take you off the list.</p>
@@ -100,13 +90,19 @@
   const input = document.getElementById('email');
   const btn = form.querySelector('button');
   const msg = document.getElementById('email-msg');
+  const note = document.getElementById('unsub-note');
   const show = s => { root.dataset.state = s; };
+  const lock = text => { // keep the form visible but switched off, and say why
+    note.textContent = text; note.hidden = false;
+    input.disabled = btn.disabled = true; show('locked');
+  };
   const fail = text => { msg.textContent = text; input.setAttribute('aria-invalid', 'true'); input.focus(); };
   const clear = () => { msg.textContent = ''; input.removeAttribute('aria-invalid'); };
 
-  if (!c || !t) return show('nolink');
+  if (!c || !t) return lock('This form works from the Unsubscribe link at the bottom of any letter. Open that link and it brings you back here, ready to confirm.');
   history.replaceState(null, '', location.pathname); // keep the token out of the address bar and history
-  if (!/^https:\/\//.test(url) || /REPLACE/i.test(url)) return show('off');
+  if (!/^https:\/\//.test(url) || /REPLACE/i.test(url)) return lock('Online unsubscribe is not switched on yet. Message me (below) and I will take you off the list.');
+  input.disabled = btn.disabled = false;
   show('ready');
 
   input.addEventListener('input', clear);
@@ -132,9 +128,7 @@
     } else if (body.error === 'email') {
       fail('That email does not match this letter. Use the address the letter was sent to.');
     } else if (body.error === 'link') {
-      document.getElementById('nolink-text').textContent =
-        'This unsubscribe link is not valid. Open the Unsubscribe link in a recent letter, or message me and I will take you off the list.';
-      show('nolink');
+      lock('This unsubscribe link is not valid. Open the Unsubscribe link in a recent letter, or message me (below) and I will take you off the list.');
     } else {
       fail('Something went wrong on my side, and you are not unsubscribed yet. Try again in a minute.');
     }

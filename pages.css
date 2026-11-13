@@ -23,14 +23,17 @@ section.block{padding:40px 0 72px}
 .steps p{color:var(--muted);font-size:15px}
 
 /* ---------- unsubscribe.html ---------- */
-/* One section; data-state picks which .unsub-step shows: ready | done | nolink | off. */
+/* data-state: ready (form on) | locked (form shown but disabled, .unsub-note says why) | done. */
 .unsub{padding:112px 0 80px}
 .unsub .wrap{max-width:calc(640px + 48px)}
 .unsub-step{display:none}
-.unsub[data-state="ready"] [data-show="ready"],
-.unsub[data-state="done"] [data-show="done"],
-.unsub[data-state="nolink"] [data-show="nolink"],
-.unsub[data-state="off"] [data-show="off"]{display:block}
+.unsub:not([data-state="done"]) [data-show="form"],
+.unsub[data-state="done"] [data-show="done"]{display:block}
+.unsub-note{margin-top:28px;padding:14px 20px;border-radius:12px;background:var(--accent-soft);color:var(--ink);font-size:15px;line-height:1.6;max-width:56ch}
+.unsub-note + .unsub-form{margin-top:24px}
+.unsub-row input:disabled{opacity:.55;cursor:not-allowed}
+.unsub[data-state="locked"] .unsub-form label{color:var(--muted)}
+.unsub[data-state="locked"] .unsub-row .btn{opacity:.4;cursor:not-allowed}
 .unsub h1{font-size:clamp(36px,5.2vw,56px);line-height:1.08;letter-spacing:-.02em;margin-bottom:16px;text-wrap:balance}
 .unsub .lead{max-width:56ch}
 
