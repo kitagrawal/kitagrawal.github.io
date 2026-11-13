@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import {
-  receivesLetters, isNewsletter, applyEvent, customerOf, cancelDecision, cancelForm, cancelReply,
+  receivesLetters, isNewsletter, applyEvent, customerOf, cancelDecision, needsCancel, cancelForm, cancelReply,
   cancelPageUrl, verifySignature, restrictedKey,
 } from "./rules.mjs";
 
@@ -174,6 +174,33 @@ test("cancelDecision: every other case is the same support answer", () => {
   for (const bad of [undefined, null, "", "sub_ABC", "cus_", "cus_a b", "cus_ABC&x=1", 42, { c: "cus_ABC" }]) {
     assert.deepEqual(cancelDecision(bad, row()), support, String(bad));
   }
+});
+
+test("needsCancel: opted out, live plan, no scheduled cancel is picked", () => {
+  for (const status of ["active", "trialing", "past_due"]) {
+    assert.equal(needsCancel(row({ email_opt_out: true, status })), true, status);
+  }
+});
+
+test("needsCancel: not opted out, ended, no plan or already cancelling is not picked", () => {
+  assert.equal(needsCancel(row()), false);
+  assert.equal(needsCancel(row({ email_opt_out: false })), false);
+  assert.equal(needsCancel(row({ email_opt_out: "true" })), false);
+  assert.equal(needsCancel(row({ email_opt_out: true, cancel_at_period_end: true })), false);
+  for (const status of ["canceled", "incomplete_expired", "incomplete", "unpaid", "paused"]) {
+    assert.equal(needsCancel(row({ email_opt_out: true, status })), false, status);
+  }
+  assert.equal(needsCancel(row({ email_opt_out: true, subscription_id: undefined })), false);
+  assert.equal(needsCancel(row({ email_opt_out: true, username: "not-a-customer" })), false);
+  assert.equal(needsCancel(undefined), false);
+});
+
+test("needsCancel: after the webhook records the scheduled cancel the row is not picked again", () => {
+  const before = row({ email_opt_out: true });
+  const after = applyEvent(before, { type: "customer.subscription.updated", created: 5,
+    data: { object: sub({ cancel_at_period_end: true }) } }, PROD).row;
+  assert.equal(needsCancel(before), true);
+  assert.equal(needsCancel({ ...before, ...after }), false);
 });
 
 test("cancelForm schedules the cancel for the end of the paid period", () => {

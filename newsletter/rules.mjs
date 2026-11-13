@@ -107,6 +107,12 @@ export const cancelDecision = (c, row) =>
     ? { action: "cancel", subscription: row.subscription_id }
     : { action: "support" };
 
+// Legacy opt-outs still billing: the rows cancel-opt-outs.sh cancels at period end. True when the
+// reader has the legacy email_opt_out flag and cancelDecision would cancel the plan (live, none
+// scheduled). Once the webhook records the scheduled cancel the row stops matching, so a re-run picks nobody.
+export const needsCancel = (row) =>
+  row?.email_opt_out === true && cancelDecision(row.username, row).action === "cancel";
+
 // Form body for Stripe's POST /v1/subscriptions/{id}: the plan ends when the paid period does.
 export const cancelForm = () => new URLSearchParams({ cancel_at_period_end: "true" }).toString();
 

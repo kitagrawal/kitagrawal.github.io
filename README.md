@@ -19,7 +19,7 @@ Static portfolio site, hosted on GitHub Pages. No build step or dependencies.
 | `site.js`, `home.js` | `site.js` is the shared helpers (theme, consultation cards) for every page; `home.js` is the home page's own script |
 | `theme-icon.svg` | Theme toggle icon (used as a CSS mask, so it follows the text colour) |
 | `SETUP.md` | Step-by-step Cal.com and newsletter setup |
-| `newsletter/` | AWS Lambdas for the paid newsletter (us-east-2, `newsletter` profile): `stripe-sync` (the one Stripe webhook; builds rows from the events, no Stripe API key), `unsubscribe-user`, shared `lib.mjs` and `rules.mjs` (pure, tested with `node --test newsletter/*.test.mjs`), `deploy.sh` to push code changes, one-off `setup-dynamodb.sh` and `setup-unsubscribe.sh`, and `link.sh` to print a test unsubscribe link. Not part of the site; see `docs/newsletter-ses/PLAN.md` |
+| `newsletter/` | AWS Lambdas for the paid newsletter (us-east-2, `newsletter` profile): `stripe-sync` (the one Stripe webhook; builds rows from the events, no Stripe API key), `unsubscribe-user`, shared `lib.mjs` and `rules.mjs` (pure, tested with `node --test newsletter/*.test.mjs`), `deploy.sh` to push code changes, one-off `setup-dynamodb.sh` and `setup-unsubscribe.sh`, `link.sh` to print a test unsubscribe link, and one-off `cancel-opt-outs.sh` (dry run by default; `--confirm` schedules period-end cancels in live Stripe for legacy opt-outs who still pay). Not part of the site; see `docs/newsletter-ses/PLAN.md` |
 | `robots.txt` | Search engine rules |
 | `.nojekyll` | Tells GitHub Pages to serve files as-is |
 
