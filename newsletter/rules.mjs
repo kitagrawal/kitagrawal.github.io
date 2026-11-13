@@ -73,6 +73,14 @@ export function applyEvent(row, evt, productId) {
         sub_live: receivesLetters(o),
         sub_event_at: at,
       };
+      // Reader-email claims (readerEmail below): a resumed cancel clears its note so a later cancel
+      // gets a new one; a new plan after an ended one starts the welcome/goodbye over.
+      if (!next.cancel_at_period_end) delete next.cancel_noted_at;
+      if (!same && isEnded(row?.status) && !isEnded(o.status)) {
+        delete next.welcomed_at;
+        delete next.goodbye_at;
+        delete next.cancel_noted_at;
+      }
       if (o.metadata?.email_opt_out === "true") next.email_opt_out = true;
       // A new subscription started after the reader opted out is a resubscribe.
       else if (!same && row?.email_opt_out && o.created > (row.opted_out_at ?? Infinity)) next.email_opt_out = false;
@@ -177,4 +185,29 @@ export function sendPlan(objectKey, rows, productionAccess) {
     recipients.push({ customerId: r.username, email: r.email, emailLc: r.email_lc });
   }
   return { mode: "send", issueId, recipients };
+}
+
+// Which reader email (if any) a row change makes due. StripeSync calls it after saveRow writes, with the
+// row before (or undefined) and after the write. Returns { kind, claim } or null:
+//   welcome            claim welcomed_at     the plan is live (and the reader has not opted out), no welcome yet
+//   cancel-scheduled   claim cancel_noted_at a cancel is scheduled on a live plan and not yet noted; needs
+//                      current_period_end for the "letters continue until" date. applyEvent clears
+//                      cancel_noted_at when the cancel is resumed, so cancel, resume, cancel notes twice
+//   goodbye            claim goodbye_at      the plan ended, no goodbye yet, and the reader was welcomed or the
+//                      write is the one that ended a live plan (a row that never went live gets none)
+// One email per event: welcome wins over cancel-scheduled. null in the SES sandbox (nothing is claimed, so
+// the email goes out on a later event once production access exists) or when there is no email on file.
+// The claim is a field on the row: StripeSync sets it with a conditional write before sending, so each
+// email is sent at most once.
+export function readerEmail(oldRow, newRow, productionAccess) {
+  if (productionAccess !== true || !newRow?.email) return null;
+  const live = newRow.sub_live === true && newRow.email_opt_out !== true;
+  if (live && !newRow.welcomed_at) return { kind: "welcome", claim: "welcomed_at" };
+  if (live && newRow.cancel_at_period_end === true && !newRow.cancel_noted_at && Number.isFinite(newRow.current_period_end)) {
+    return { kind: "cancel-scheduled", claim: "cancel_noted_at" };
+  }
+  if (isEnded(newRow.status) && !newRow.goodbye_at && (newRow.welcomed_at || LIVE(oldRow?.status))) {
+    return { kind: "goodbye", claim: "goodbye_at" };
+  }
+  return null;
 }

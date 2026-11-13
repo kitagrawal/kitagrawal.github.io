@@ -17,11 +17,18 @@
 #   - the function SendIssue (900 s, 256 MB) with the code from this folder
 #   - the bucket's public access block (all four on), the S3 permission to invoke SendIssue, and the bucket
 #     notification for ObjectCreated on drafts/*.md and issues/*.md
+#   - StripeSync's reader emails (section 7, last): an extra role policy "reader-emails" on StripeSync's role
+#     (ses:SendEmail on the identity and configuration set, ses:GetAccount, dynamodb:UpdateItem on the
+#     subscribers table for the claim fields, cloudwatch:PutMetricData in the Newsletter namespace) and the
+#     env vars FROM, REPLY_TO, CONFIG_SET, CANCEL_PAGE merged into StripeSync's existing ones. It lives here,
+#     not in a script of its own, because it needs the same sender, reply-to and refusal of REPLACE values.
+#     The policy has its own name, so setup-dynamodb.sh's "dynamodb-subscribers" policy is left alone.
+#     StripeSync only starts sending once ./deploy.sh has pushed the code that does it.
 #
 # Bucket notification: put-bucket-notification-configuration replaces the bucket's whole notification
 # configuration. This script reads the current one first, drops only its own "send-issue-*" entries and
 # keeps everything else, but check the output if the bucket has other triggers.
-# Later code changes: ./deploy.sh
+# Later code changes (and the StripeSync code that sends reader emails): ./deploy.sh
 set -euo pipefail
 export AWS_PROFILE=newsletter AWS_REGION=us-east-2
 cd "$(dirname "$0")"
@@ -49,6 +56,7 @@ done
 ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
 aws s3api head-bucket --bucket "$BUCKET" >/dev/null 2>&1 || { echo "Bucket $BUCKET not found or not accessible" >&2; exit 1; }
 TABLE_ARN=$(aws dynamodb describe-table --table-name "$TABLE" --query Table.TableArn --output text)
+aws lambda get-function --function-name StripeSync >/dev/null 2>&1 || { echo "Lambda StripeSync not found: run ./setup-dynamodb.sh first" >&2; exit 1; }
 aws sesv2 get-email-identity --email-identity "$DOMAIN" >/dev/null 2>&1 || { echo "SES identity $DOMAIN not found: run ./setup-ses.sh first" >&2; exit 1; }
 aws sesv2 get-configuration-set --configuration-set-name "$CONFIG_SET" >/dev/null 2>&1 || { echo "SES configuration set $CONFIG_SET not found: run ./setup-ses.sh first" >&2; exit 1; }
 
@@ -147,8 +155,41 @@ print(json.dumps(cfg))
 aws s3api put-bucket-notification-configuration --bucket "$BUCKET" --notification-configuration "$merged"
 echo "Bucket $BUCKET: ObjectCreated on drafts/*.md and issues/*.md invokes $FN"
 
+# 7. StripeSync's reader emails: permissions and env vars. The policy has its own name; the env vars are
+# merged into the existing ones because update-function-configuration --environment replaces them all.
+SS_ROLE=$(aws lambda get-function-configuration --function-name StripeSync --query Role --output text)
+SS_ROLE=${SS_ROLE##*/}
+aws iam put-role-policy --role-name "$SS_ROLE" --policy-name reader-emails --policy-document "{
+  \"Version\": \"2012-10-17\",
+  \"Statement\": [
+    {\"Effect\": \"Allow\", \"Action\": \"ses:SendEmail\",
+     \"Resource\": [\"arn:aws:ses:$AWS_REGION:$ACCOUNT:identity/$DOMAIN\", \"arn:aws:ses:$AWS_REGION:$ACCOUNT:configuration-set/$CONFIG_SET\"]},
+    {\"Effect\": \"Allow\", \"Action\": \"ses:GetAccount\", \"Resource\": \"*\"},
+    {\"Effect\": \"Allow\", \"Action\": \"dynamodb:UpdateItem\", \"Resource\": \"$TABLE_ARN\"},
+    {\"Effect\": \"Allow\", \"Action\": \"cloudwatch:PutMetricData\", \"Resource\": \"*\",
+     \"Condition\": {\"StringEquals\": {\"cloudwatch:namespace\": \"Newsletter\"}}}
+  ]
+}"
+echo "Role $SS_ROLE: reader-emails policy set"
+aws lambda wait function-updated-v2 --function-name StripeSync
+ss_vars=$(aws lambda get-function-configuration --function-name StripeSync --query Environment.Variables --output json)
+ss_env=$(python3 - "$ss_vars" "$FROM" "$REPLY_TO" "$CONFIG_SET" "$CANCEL_PAGE" <<'PY'
+import json, sys
+v = json.loads(sys.argv[1]) or {}
+for k, val in zip(["FROM", "REPLY_TO", "CONFIG_SET", "CANCEL_PAGE"], sys.argv[2:]):
+    if "REPLACE" in val:
+        sys.exit(f"{k} still holds a REPLACE placeholder")
+    v[k] = val
+print(json.dumps({"Variables": v}))
+PY
+)
+aws lambda update-function-configuration --function-name StripeSync --environment "$ss_env" --query LastUpdateStatus --output text >/dev/null
+aws lambda wait function-updated-v2 --function-name StripeSync
+echo "StripeSync: env $(aws lambda get-function-configuration --function-name StripeSync --query 'Environment.Variables | keys(@)' --output text)"
+
 echo
 echo "Next:"
 echo "  - While SES is in the sandbox, verify $AUTHOR_EMAIL as an SES email identity (it can only send to verified addresses)."
 echo "  - Upload a Markdown file with a 'subject:' front matter to drafts/ to get a proof; copy it to issues/ to publish."
+echo "  - Run ./deploy.sh to push the code: StripeSync then sends reader emails (welcome, cancel-scheduled, goodbye) once SES has production access."
 echo "  - Code changes later: ./deploy.sh"

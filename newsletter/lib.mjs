@@ -94,7 +94,8 @@ export async function getRow(customerId) {
 // Read-modify-write of one row. change(row) returns { action: "write", row } | { action: "delete" }
 // | { action: "skip" }. The write is conditioned on the row's rev, so two Lambdas changing the
 // same row at once never lose an update: the loser re-reads and re-applies.
-// Returns { action, row }.
+// Returns { action, row, old }: row is the row as now stored, old the row before this call (undefined
+// when there was none), so a caller can tell what changed.
 export async function saveRow(customerId, change) {
   for (let attempt = 0; attempt < 4; attempt++) {
     const old = await getRow(customerId);
@@ -111,13 +112,13 @@ export async function saveRow(customerId, change) {
         const { username: _u, rev: _r, ...fields } = out.row;
         const item = { ...fields, username: customerId, rev: (old?.rev ?? 0) + 1, updated_at: new Date().toISOString() };
         await db.send(new PutCommand({ TableName: TABLE, Item: item, ...same }));
-        return { action: "write", row: item };
+        return { action: "write", row: item, old };
       }
       if (out.action === "delete" && old) {
         await db.send(new DeleteCommand({ TableName: TABLE, Key: { username: customerId }, ...same }));
-        return { action: "delete" };
+        return { action: "delete", old };
       }
-      return { action: "skip", row: old };
+      return { action: "skip", row: old, old };
     } catch (e) {
       if (e.name !== "ConditionalCheckFailedException") throw e;
     }
