@@ -1,16 +1,16 @@
 // Shared by the StripeSync and UnsubscribeUser Lambdas (zipped next to each index.mjs with rules.mjs).
 // AWS SDK v3 ships with the Lambda Node runtime, so there is nothing to install.
+// There is no Stripe API key: rows are built from signed webhook events only (see applyEvent).
 import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
+import { SNSClient, PublishCommand } from "@aws-sdk/client-sns";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, UpdateCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
-import { verifySignature, projectCustomer, rowChanged, ROW_FIELDS } from "./rules.mjs";
+import { DynamoDBDocumentClient, GetCommand, PutCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
+import { verifySignature } from "./rules.mjs";
 
 export * from "./rules.mjs";
 
-// projectCustomer reads the response shape of this version; change it only with the tests.
-export const STRIPE_VERSION = "2025-03-31.basil";
-
 const ssm = new SSMClient();
+const sns = new SNSClient();
 export const db = DynamoDBDocumentClient.from(new DynamoDBClient());
 export const TABLE = process.env.TABLE_NAME;
 const cache = new Map();
@@ -19,10 +19,10 @@ export const reply = (statusCode, body, headers) => ({ statusCode, body, headers
 export const json = (statusCode, obj) =>
   reply(statusCode, JSON.stringify(obj), { "content-type": "application/json", "cache-control": "no-store" });
 
-// Throws when unset: an empty product filter would mark every reader as not receiving letters.
+// Throws when unset: an empty product filter would skip every newsletter event.
 export function productId() {
   const id = process.env.NEWSLETTER_PRODUCT_ID;
-  if (!id || !id.startsWith("prod_")) throw new Error("NEWSLETTER_PRODUCT_ID is not set");
+  if (!id || !id.startsWith("prod_") || id === "prod_XXXX") throw new Error("NEWSLETTER_PRODUCT_ID is not set");
   return id;
 }
 
@@ -52,89 +52,50 @@ export async function stripeEvent(event) {
   return { evt: JSON.parse(raw.toString("utf8")) };
 }
 
-export async function stripeApi(method, path, form) {
-  const key = await param(process.env.STRIPE_KEY_PARAM);
-  const res = await fetch(`https://api.stripe.com/v1/${path}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Stripe-Version": STRIPE_VERSION,
-      ...(form && { "Content-Type": "application/x-www-form-urlencoded" }),
-    },
-    body: form && new URLSearchParams(form),
-  });
-  const body = await res.json();
-  if (!res.ok) {
-    const err = new Error(`Stripe ${method} ${path.split("?")[0]}: ${res.status} ${body.error?.message}`);
-    err.status = res.status;
-    throw err;
-  }
-  return body;
+export async function getRow(customerId) {
+  const { Item } = await db.send(new GetCommand({ TableName: TABLE, Key: { username: customerId } }));
+  return Item;
 }
 
-// Every item of a Stripe list, following has_more / starting_after.
-export async function stripeList(path) {
-  const all = [];
-  const sep = path.includes("?") ? "&" : "?";
-  for (let after; ;) {
-    const page = await stripeApi("GET", `${path}${sep}limit=100${after ? `&starting_after=${after}` : ""}`);
-    all.push(...page.data);
-    if (!page.has_more || !page.data.length) return all;
-    after = page.data.at(-1).id;
+// Read-modify-write of one row. change(row) returns { action: "write", row } | { action: "delete" }
+// | { action: "skip" }. The write is conditioned on the row's rev, so two Lambdas changing the
+// same row at once never lose an update: the loser re-reads and re-applies.
+// Returns { action, row }.
+export async function saveRow(customerId, change) {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const old = await getRow(customerId);
+    const out = change(old);
+    const same = old
+      ? { ConditionExpression: "#rev = :rev", ExpressionAttributeNames: { "#rev": "rev" }, ExpressionAttributeValues: { ":rev": old.rev ?? 0 } }
+      : { ConditionExpression: "attribute_not_exists(username)" };
+    if (old && old.rev === undefined) { // rows written before rev existed
+      same.ConditionExpression = "attribute_not_exists(#rev)";
+      delete same.ExpressionAttributeValues;
+    }
+    try {
+      if (out.action === "write") {
+        const { username: _u, rev: _r, ...fields } = out.row;
+        const item = { ...fields, username: customerId, rev: (old?.rev ?? 0) + 1, updated_at: new Date().toISOString() };
+        await db.send(new PutCommand({ TableName: TABLE, Item: item, ...same }));
+        return { action: "write", row: item };
+      }
+      if (out.action === "delete" && old) {
+        await db.send(new DeleteCommand({ TableName: TABLE, Key: { username: customerId }, ...same }));
+        return { action: "delete" };
+      }
+      return { action: "skip", row: old };
+    } catch (e) {
+      if (e.name !== "ConditionalCheckFailedException") throw e;
+    }
   }
+  throw new Error(`saveRow ${customerId}: too many concurrent updates`);
 }
 
-// Write a projected row (or delete it when row is null). fetchedAt is when the Stripe data was
-// read: a write from an older read never replaces a newer one, so racing webhooks are harmless.
-// Returns "changed" | "unchanged" | "stale" | "deleted".
-export async function writeRow(customerId, row, fetchedAt) {
-  if (!row) {
-    const r = await db.send(new DeleteCommand({ TableName: TABLE, Key: { username: customerId }, ReturnValues: "ALL_OLD" }));
-    return r.Attributes ? "deleted" : "unchanged";
-  }
-  const names = {}, values = { ":at": fetchedAt }, sets = ["#synced_at = :at"];
-  names["#synced_at"] = "synced_at";
-  for (const k of ROW_FIELDS) {
-    names[`#${k}`] = k;
-    values[`:${k}`] = row[k] ?? null;
-    sets.push(`#${k} = :${k}`);
-  }
-  try {
-    const r = await db.send(new UpdateCommand({
-      TableName: TABLE,
-      Key: { username: customerId },
-      UpdateExpression: `SET ${sets.join(", ")}`,
-      ConditionExpression: "attribute_not_exists(#synced_at) OR #synced_at < :at",
-      ExpressionAttributeNames: names,
-      ExpressionAttributeValues: values,
-      ReturnValues: "ALL_OLD",
-    }));
-    return rowChanged(r.Attributes, row) ? "changed" : "unchanged";
-  } catch (e) {
-    if (e.name !== "ConditionalCheckFailedException") throw e;
-    return "stale";
-  }
-}
-
-async function getCustomer(customerId) {
-  try {
-    return await stripeApi("GET", `customers/${encodeURIComponent(customerId)}`);
-  } catch (e) {
-    if (e.status === 404) return null;
-    throw e;
-  }
-}
-
-// The one way Stripe state reaches the table: fetch the customer and all its subscriptions,
-// project them to a row, write it. Safe to call any number of times, in any order.
-export async function syncCustomer(customerId) {
-  const prod = productId();
-  const fetchedAt = new Date().toISOString();
-  const customer = await getCustomer(customerId);
-  const subs = customer && !customer.deleted
-    ? await stripeList(`subscriptions?customer=${encodeURIComponent(customerId)}&status=all`)
-    : [];
-  const row = projectCustomer(customer, subs, prod);
-  const result = await writeRow(customerId, row, fetchedAt);
-  return { customerId, result, receives_letters: row?.receives_letters ?? null };
+// Email the owner through the unsubscribe SNS topic.
+export async function notifyOwner(subject, text) {
+  await sns.send(new PublishCommand({
+    TopicArn: process.env.UNSUBSCRIBE_TOPIC_ARN,
+    Subject: subject.slice(0, 100),
+    Message: text,
+  }));
 }

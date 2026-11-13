@@ -18,7 +18,8 @@
 <!-- Hidden page: nothing links here. The letter's Unsubscribe link opens it as
      unsubscribe.html?c=<customer id>&t=<token>. The reader types their email and the page
      posts { c, t, email } to cfg.newsletter.unsubscribeApiUrl (API Gateway → UnsubscribeUser,
-     which checks the token and the email against DynamoDB, then cancels in Stripe). -->
+     which checks the token and the email against DynamoDB, stops letters and emails the owner,
+     who cancels the plan in Stripe). -->
 <header>
   <div class="wrap">
     <nav>
@@ -51,7 +52,7 @@
 
         <ul class="unsub-facts">
           <li><strong>Letters stop now.</strong> No more issues after you confirm.</li>
-          <li><strong>Billing stops too.</strong> A paid plan ends at the close of the current period, and you are not charged again.</li>
+          <li><strong>Billing stops too.</strong> I cancel your paid plan in Stripe within 2 days.</li>
         </ul>
       </div>
 
@@ -59,7 +60,7 @@
       <div class="unsub-step unsub-done" data-show="done" tabindex="-1" id="done">
         <svg class="unsub-mark" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22"/><path d="M15 24.5l6 6 12-13"/></svg>
         <h1>You are unsubscribed</h1>
-        <p class="lead">No more letters will arrive, and you will not be charged again. Thank you for reading.</p>
+        <p class="lead">No more letters will arrive. I will cancel your paid plan within 2 days. Thank you for reading.</p>
         <div class="btns">
           <a class="btn" href="index.html">Back to home</a>
           <a class="btn quiet" data-subscribe>Changed your mind? Subscribe again</a>

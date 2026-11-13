@@ -8,7 +8,7 @@
 # if both functions already have it. Use the test-mode product id while testing in test mode.
 #
 # Table: key "username" (string) = Stripe customer id. Other attributes are written by
-# syncCustomer() in lib.mjs and need no schema. On-demand billing, point-in-time recovery and
+# applyEvent() and optOut() in rules.mjs (written by saveRow in lib.mjs) and need no schema. On-demand billing, point-in-time recovery and
 # deletion protection are on.
 set -euo pipefail
 export AWS_PROFILE=newsletter AWS_REGION=us-east-2
@@ -36,7 +36,7 @@ aws dynamodb update-continuous-backups --table-name "$TABLE" \
 ARN=$(aws dynamodb describe-table --table-name "$TABLE" --query Table.TableArn --output text)
 
 # 2. Each function: its table actions, timeout, and TABLE_NAME + NEWSLETTER_PRODUCT_ID added to
-# its existing env vars. StripeSync needs Scan and 5 minutes for the nightly reconcile.
+# its existing env vars. There is no Stripe API key, so STRIPE_KEY_PARAM is removed.
 configure() {
   local fn=$1 actions=$2 timeout=$3
   local role
@@ -54,9 +54,10 @@ configure() {
 import json, sys
 v = json.loads(sys.argv[1]) or {}
 v["TABLE_NAME"] = sys.argv[2]
+v.pop("STRIPE_KEY_PARAM", None)
 if sys.argv[3]:
     v["NEWSLETTER_PRODUCT_ID"] = sys.argv[3]
-if not v.get("NEWSLETTER_PRODUCT_ID", "").startswith("prod_"):
+if not v.get("NEWSLETTER_PRODUCT_ID", "").startswith("prod_") or v["NEWSLETTER_PRODUCT_ID"] == "prod_XXXX":
     sys.exit(f"{sys.argv[4]}: NEWSLETTER_PRODUCT_ID is not set; run NEWSLETTER_PRODUCT_ID=prod_... {sys.argv[0]}")
 print(json.dumps({"Variables": v}))
 PY
@@ -67,7 +68,7 @@ PY
   echo "$fn: timeout ${timeout}s, env $(aws lambda get-function-configuration --function-name "$fn" --query 'Environment.Variables | keys(@)' --output text)"
 }
 
-configure StripeSync '["dynamodb:UpdateItem","dynamodb:DeleteItem","dynamodb:Scan"]' 300
-configure UnsubscribeUser '["dynamodb:GetItem","dynamodb:UpdateItem","dynamodb:DeleteItem"]' 30
+configure StripeSync '["dynamodb:GetItem","dynamodb:PutItem","dynamodb:DeleteItem"]' 30
+configure UnsubscribeUser '["dynamodb:GetItem","dynamodb:PutItem"]' 30
 
-echo "Done. Next: ./deploy.sh, then ./setup-reconcile.sh"
+echo "Done. Next: OWNER_EMAIL=you@example.com ./setup-unsubscribe.sh, then ./deploy.sh"

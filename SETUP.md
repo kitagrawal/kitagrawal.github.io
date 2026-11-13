@@ -19,15 +19,17 @@ Every Subscribe button (`data-subscribe`) goes to `newsletter.subscribeUrl`. Use
 
 Keep `newsletter.price` in `config.js` equal to the real price. While `subscribeUrl` contains `REPLACE`, the Subscribe buttons are greyed out.
 
-`unsubscribe.html` is where readers unsubscribe. Nothing on the site links to it and it is marked `noindex`; readers reach it only from the Unsubscribe link in a letter, which looks like `https://<your-site>/unsubscribe.html?c=<Stripe customer id>&t=<token>`. The reader types the email the letter was sent to, and the page posts `{ c, t, email }` to the `UnsubscribeUser` Lambda. The Lambda checks the token, checks the email against the subscribers table, then cancels the newsletter subscription in Stripe at the end of the paid period and stops letters at once. The reader never signs in to Stripe. Without `c` and `t` the page shows no form. To turn it on:
+`unsubscribe.html` is where readers unsubscribe. Nothing on the site links to it and it is marked `noindex`; readers reach it only from the Unsubscribe link in a letter, which looks like `https://<your-site>/unsubscribe.html?c=<Stripe customer id>&t=<token>`. The reader types the email the letter was sent to, and the page posts `{ c, t, email }` to the `UnsubscribeUser` Lambda. The Lambda checks the token and the email against the subscribers table, stops letters at once, and, while the plan still bills, sends you an email (SNS) with a link to the subscription in the Stripe Dashboard. You cancel it there within 2 days (the page promises this); Stripe's webhook then brings the cancellation back into the table. AWS holds no Stripe API key. Without `c` and `t` the form is shown but disabled. To turn it on:
 
-1. Run `newsletter/setup-unsubscribe.sh` (once). It prints the API URL.
+1. Run `OWNER_EMAIL=you@example.com newsletter/setup-unsubscribe.sh` (once) and confirm the email AWS sends. It prints the API URL.
 2. Put that URL into `newsletter.unsubscribeApiUrl` in `config.js`. While it contains `REPLACE`, the form is disabled.
 3. Test with a link from `newsletter/link.sh <cus_id> http://localhost:8000/unsubscribe.html` under `python3 -m http.server`.
 
 The token is `base64url(HMAC-SHA256(key, customer id))` (`unsubscribeToken` in `newsletter/rules.mjs`), so nobody can unsubscribe someone else. Letters also carry the one-click mail headers that `setup-unsubscribe.sh` prints. Do not list `unsubscribe.html` in `robots.txt`, which is public and would stop search engines seeing the `noindex`.
 
-To unsubscribe a reader yourself, use the Stripe Dashboard: cancel the subscription, or set its metadata `email_opt_out` to `true`. `StripeSync` copies every change into DynamoDB. Stripe is the source of truth; never edit the table by hand.
+To unsubscribe a reader yourself, use the Stripe Dashboard: cancel the subscription, or set its metadata `email_opt_out` to `true`. `StripeSync` copies every change into DynamoDB from the webhook. Stripe is the source of truth for billing; never edit the table by hand.
+
+The Stripe webhook: in the Stripe Dashboard → Developers → Webhooks, add an endpoint at `StripeSync`'s URL (`.../stripe/sync`) with the events `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.updated` and `customer.deleted`. Store its signing secret yourself in SSM as `/newsletter/stripe-sync/webhook-secret` (SecureString). Subscribers from before the webhook existed appear in the table at their next renewal.
 
 ## 3. Deploy on GitHub Pages
 

@@ -6,8 +6,8 @@ const LETTER_STATUSES = ["active", "trialing", "past_due"];
 const ENDED = ["canceled", "incomplete_expired"];
 export const isEnded = (status) => ENDED.includes(status);
 
-// The one rule for "this subscription gets letters". send-issue reads only the table's
-// receives_letters, which syncCustomer sets from this.
+// "This subscription gets letters", from the subscription alone. applyEvent stores it as sub_live
+// and combines it with the reader's opt-out into the row's receives_letters.
 export const receivesLetters = (sub) =>
   LETTER_STATUSES.includes(sub.status) &&
   !sub.cancel_at_period_end &&
@@ -27,35 +27,80 @@ export const isNewsletter = (sub, productId) =>
 // Newer API versions moved current_period_end onto the subscription items.
 const periodEnd = (sub) => sub.current_period_end ?? sub.items?.data?.[0]?.current_period_end ?? null;
 
-// Stripe customer + its subscriptions -> the table row (without synced_at), or null when the
-// row should not exist: the customer is deleted, or never had a newsletter subscription.
-// The subscription shown is one that receives letters if any does, else the most recent.
-export function projectCustomer(customer, subs, productId) {
-  if (!customer || customer.deleted) return null;
-  const mine = subs.filter((s) => isNewsletter(s, productId));
-  if (!mine.length) return null;
-  const pick = [...mine].sort(
-    (a, b) => Number(receivesLetters(b)) - Number(receivesLetters(a)) || b.created - a.created,
-  )[0];
-  const email = customer.email ?? null;
-  return {
-    email,
-    email_lc: email ? email.trim().toLowerCase() : null,
-    subscription_id: pick.id,
-    status: pick.status,
-    cancel_at_period_end: Boolean(pick.cancel_at_period_end || pick.cancel_at),
-    current_period_end: periodEnd(pick),
-    email_opt_out: pick.metadata?.email_opt_out === "true",
-    receives_letters: receivesLetters(pick),
-  };
+const LIVE = (status) => LETTER_STATUSES.includes(status);
+const lower = (email) => (email ? email.trim().toLowerCase() : null);
+
+// The customer id a handled webhook event is about, or null for events we ignore.
+export function customerOf(evt) {
+  const o = evt?.data?.object ?? {};
+  if (evt?.type?.startsWith("customer.subscription.") || evt?.type === "checkout.session.completed") {
+    return typeof o.customer === "string" ? o.customer : o.customer?.id ?? null;
+  }
+  if (evt?.type === "customer.updated" || evt?.type === "customer.deleted") return o.id ?? null;
+  return null;
 }
 
-// The fields compared to decide whether a sync changed a row (for the reconcile count).
-export const ROW_FIELDS = [
-  "email", "email_lc", "subscription_id", "status", "cancel_at_period_end",
-  "current_period_end", "email_opt_out", "receives_letters",
-];
-export const rowChanged = (old, row) => !old || ROW_FIELDS.some((k) => (old[k] ?? null) !== (row[k] ?? null));
+// The one rule for a row: letters go out only to a live subscription, with an email on file,
+// that the reader has not opted out of. send-issue reads only receives_letters.
+const finish = (row) => ({
+  action: "write",
+  row: { ...row, receives_letters: Boolean(row.sub_live && !row.email_opt_out && row.email_lc) },
+});
+const SKIP = { action: "skip" };
+
+// Webhook event + the current row (or undefined) -> { action: "write", row } | { action: "delete" } | SKIP.
+// The row is built from events alone (no Stripe API key): subscription events carry the plan,
+// checkout.session.completed and customer.updated carry the email. Each half keeps the event
+// time it came from, so a late, older event never overwrites a newer one.
+export function applyEvent(row, evt, productId) {
+  const o = evt?.data?.object ?? {};
+  const at = evt?.created ?? 0;
+  switch (evt?.type) {
+    case "customer.subscription.created":
+    case "customer.subscription.updated":
+    case "customer.subscription.deleted": {
+      if (!isNewsletter(o, productId)) return SKIP;
+      const same = row?.subscription_id === o.id;
+      if (same && row.sub_event_at > at) return SKIP; // out of order
+      // Two subscriptions on one customer: keep the one that gets letters.
+      if (row?.subscription_id && !same && row.sub_live && !receivesLetters(o)) return SKIP;
+      const next = {
+        ...row,
+        subscription_id: o.id,
+        status: o.status,
+        cancel_at_period_end: Boolean(o.cancel_at_period_end || o.cancel_at),
+        current_period_end: periodEnd(o),
+        sub_live: receivesLetters(o),
+        sub_event_at: at,
+      };
+      if (o.metadata?.email_opt_out === "true") next.email_opt_out = true;
+      // A new subscription started after the reader opted out is a resubscribe.
+      else if (!same && row?.email_opt_out && o.created > (row.opted_out_at ?? Infinity)) next.email_opt_out = false;
+      return finish(next);
+    }
+    case "checkout.session.completed": {
+      const email = o.customer_details?.email ?? o.customer_email;
+      if (o.mode !== "subscription" || !email) return SKIP;
+      if (row?.email_event_at > at) return SKIP;
+      return finish({ ...row, email, email_lc: lower(email), email_event_at: at });
+    }
+    case "customer.updated": {
+      // Only for customers we already track; other Stripe customers never get a row.
+      if (!row || !o.email || row.email_event_at > at) return SKIP;
+      return finish({ ...row, email: o.email, email_lc: lower(o.email), email_event_at: at });
+    }
+    case "customer.deleted":
+      return row ? { action: "delete" } : SKIP;
+    default:
+      return SKIP;
+  }
+}
+
+// The reader unsubscribed (page or one-click). nowSec is unix seconds, like Stripe's times.
+export const optOut = (row, nowSec) => finish({ ...row, email_opt_out: true, opted_out_at: nowSec }).row;
+
+// True while Stripe will still charge for the plan, so the owner must cancel it by hand.
+export const stillBilling = (row) => Boolean(row && LIVE(row.status) && !row.cancel_at_period_end);
 
 export const sameEmail = (a, b) =>
   typeof a === "string" && typeof b === "string" && a.trim() !== "" &&

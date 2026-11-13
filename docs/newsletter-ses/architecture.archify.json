@@ -107,7 +107,7 @@
         150,
         64
       ],
-      "tag": "4 secrets"
+      "tag": "2 secrets"
     },
     {
       "id": "newuser",
@@ -256,6 +256,35 @@
         150,
         64
       ]
+    },
+    {
+      "id": "sns",
+      "type": "cloud",
+      "label": "SNS",
+      "sublabel": "newsletter-unsubscribes",
+      "pos": [
+        1240,
+        340
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "owner alert"
+    },
+    {
+      "id": "owner",
+      "type": "external",
+      "label": "Owner",
+      "sublabel": "email inbox",
+      "pos": [
+        1000,
+        40
+      ],
+      "size": [
+        150,
+        64
+      ]
     }
   ],
   "boundaries": [
@@ -281,7 +310,8 @@
         "gw-unsub",
         "issues",
         "send",
-        "ses"
+        "ses",
+        "sns"
       ]
     }
   ],
@@ -318,7 +348,7 @@
       "id": "evt-changed",
       "from": "billing",
       "to": "gw-sync",
-      "label": "sub updated / deleted, customer.updated",
+      "label": "checkout, subscription + customer events",
       "variant": "security"
     },
     {
@@ -375,14 +405,27 @@
       "id": "check-unsub",
       "from": "unsub",
       "to": "table",
-      "label": "GetItem: match email"
+      "label": "GetItem, PutItem opt-out"
     },
     {
-      "id": "cancel",
+      "id": "alert",
       "from": "unsub",
-      "to": "billing",
-      "label": "cancel at period end",
+      "to": "sns",
+      "label": "publish if still billing",
       "variant": "security"
+    },
+    {
+      "id": "alert-mail",
+      "from": "sns",
+      "to": "owner",
+      "label": "email: cancel sub_\u2026"
+    },
+    {
+      "id": "manual-cancel",
+      "from": "owner",
+      "to": "billing",
+      "label": "cancels in Dashboard",
+      "variant": "dashed"
     },
     {
       "id": "one-click",
@@ -430,17 +473,17 @@
       "dot": "violet",
       "title": "Stripe owns state",
       "items": [
-        "The table is a projection; username holds the Stripe customer id",
-        "NewUser and StripeSync re-fetch the subscription from the Stripe API, so repeated or out-of-order events are harmless",
-        "An ended subscription never overwrites a newer one for the same customer"
+        "The table is built from signed webhook events only; username holds the Stripe customer id",
+        "AWS holds no Stripe API key: nothing in AWS can read or change Stripe",
+        "Each half of a row keeps its event time, so repeated or out-of-order events are harmless"
       ]
     },
     {
       "dot": "emerald",
-      "title": "Three endpoints, built",
+      "title": "Endpoints, built",
       "items": [
-        "Each Lambda has its own HTTP API (20 req/s) and least-privilege IAM role",
-        "Stripe sends subscription.created to NewUser; updates, deletes and customer.updated to StripeSync",
+        "StripeSync: the one Stripe webhook (checkout, subscription and customer events)",
+        "UnsubscribeUser: POST /unsubscribe and /unsubscribe/one-click, 2 req/s",
         "Code in newsletter/, pushed with newsletter/deploy.sh"
       ]
     },
@@ -449,18 +492,18 @@
       "title": "Unsubscribe",
       "items": [
         "Letter link opens the hidden unsubscribe.html with ?c=<customer id>&t=<HMAC token>",
-        "Reader types their email; the page POSTs {c, t, email}. UnsubscribeUser checks the token, then the email against the DynamoDB row",
-        "Then cancels at period end in Stripe (metadata email_opt_out) and re-syncs the row: receives_letters false at once",
-        "The mail header's one-click POST needs the token only; there is no GET route"
+        "Reader types their email; UnsubscribeUser checks the token, then the email against the DynamoDB row",
+        "Letters stop at once (email_opt_out); SNS emails the owner while the plan still bills",
+        "Owner cancels in the Stripe Dashboard within 2 days; the webhook records it"
       ]
     },
     {
       "dot": "rose",
       "title": "Secrets in SSM (us-east-2)",
       "items": [
-        "Two webhook signing secrets, a restricted Stripe key, the unsubscribe HMAC key",
+        "StripeSync webhook signing secret and the unsubscribe HMAC key",
         "Each Lambda can read only the parameters it uses",
-        "Nothing secret in the repo or config.js"
+        "No Stripe API key anywhere; nothing secret in the repo or config.js"
       ]
     },
     {

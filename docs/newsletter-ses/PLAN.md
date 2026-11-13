@@ -21,9 +21,9 @@ The static site does not change: every Subscribe button already goes to the Stri
 | DynamoDB `subscribers` table | A projection of Stripe state that the sender can read fast. It can be rebuilt from Stripe at any time. |
 | S3 `issues` bucket | The author uploads `issue.md`; the upload starts a send. |
 | `send-issue` Lambda | Renders the Markdown to HTML and text, reads the active subscribers, sends one email each through SES. |
-| `unsubscribe` Lambda (Function URL) | The one-click unsubscribe target. Tells Stripe to cancel at period end; the webhook then removes the reader from the list. |
+| `unsubscribe` Lambda (API Gateway) | Stops letters at once and emails the owner, who cancels the plan in the Stripe Dashboard; the webhook then records the cancellation. |
 | Amazon SES | Sends from a verified custom domain with DKIM. The account-level suppression list blocks addresses that bounced or complained. |
-| SSM Parameter Store | Stripe secret key, webhook signing secret, unsubscribe HMAC key (SecureString). |
+| SSM Parameter Store | Webhook signing secret and unsubscribe HMAC key (SecureString). No Stripe API key (decision 2026-11-12). |
 
 All AWS parts live in one account and one region, deployed with one AWS SAM template.
 
@@ -69,18 +69,19 @@ The Lambda paces itself to the account's SES send rate (read it with `GetAccount
 
 ### Unsubscribe
 
-Path: the reader clicks **Unsubscribe** in a letter → the hidden `unsubscribe.html` page → types their email → API Gateway → `UnsubscribeUser` → the DynamoDB table → Stripe.
+Path: the reader clicks **Unsubscribe** in a letter → the hidden `unsubscribe.html` page → types their email → API Gateway → `UnsubscribeUser` → the DynamoDB table, plus an SNS email to the owner → the owner cancels in Stripe → Stripe's webhook → `StripeSync` → the table.
 
 1. The link is `https://kitagrawal.github.io/unsubscribe.html?c=<customer id>&t=<HMAC of the id>`. The token proves the caller has the letter; the page removes it from the address bar and sends no referrer.
-2. The page posts `{ c, t, email }` to `POST /unsubscribe`. The Lambda checks the token, reads the row for `c` and compares the email (case and spaces ignored). A bad token answers `400 link`, a wrong email `400 email`, an already-off reader `200` with no Stripe call.
-3. Otherwise it sets `cancel_at_period_end: true` and metadata `email_opt_out: true` on the customer's **newsletter** subscriptions only, then re-syncs the row so `receives_letters` is false at once.
-4. The mail headers point at `POST /unsubscribe/one-click?c&t` (RFC 8058): token only, same effect. Link scanners do not send POSTs, so there is no GET route.
+2. The page posts `{ c, t, email }` to `POST /unsubscribe`. The Lambda checks the token, reads the row for `c` and compares the email (case and spaces ignored). A bad token answers `400 link`, a wrong email `400 email`, an already-off reader `200` and no email.
+3. Otherwise, while the plan still bills, it publishes to the SNS topic `newsletter-unsubscribes` (the owner's email: reader, subscription, Dashboard link), then sets `email_opt_out` on the row so `receives_letters` is false at once. If SNS fails it answers `502` and changes nothing, so a retry sends the email again.
+4. The owner cancels the plan in the Stripe Dashboard within 2 days (the page promises this). The `customer.subscription.updated`/`deleted` webhooks bring the change back; the opt-out stays.
+5. The mail headers point at `POST /unsubscribe/one-click?c&t` (RFC 8058): token only, same effect. Link scanners do not send POSTs, so there is no GET route.
 
-Both routes have their own throttle (2 req/s, burst 5) and CORS allows only the site and `http://localhost:8000`. There is no Stripe portal sign-in. The operator unsubscribes a reader in the Stripe Dashboard (cancel, or metadata `email_opt_out=true`).
+Both routes have their own throttle (2 req/s, burst 5) and CORS allows only the site and `http://localhost:8000`. There is no Stripe portal sign-in. The owner can also unsubscribe a reader in the Stripe Dashboard (cancel, or metadata `email_opt_out=true`).
 
-**Who gets a letter** (`receivesLetters` in `newsletter/rules.mjs`): status `active`, `trialing` or `past_due`, and not `cancel_at_period_end`, `cancel_at`, `pause_collection` or `email_opt_out`. The table stores the result as `receives_letters`; `send-issue` reads only that, and dedupes by `email_lc` (a Payment Link creates a new customer at each checkout, so one email can have two rows).
+**Who gets a letter** (`applyEvent` and `receivesLetters` in `newsletter/rules.mjs`): status `active`, `trialing` or `past_due`, not `cancel_at_period_end`, `cancel_at`, `pause_collection` or metadata `email_opt_out`, the row not opted out on the page, and an email on file. The table stores the result as `receives_letters`; `send-issue` reads only that, and dedupes by `email_lc` (a Payment Link creates a new customer at each checkout, so one email can have two rows).
 
-**Source of truth.** Every change is made in Stripe. DynamoDB is a copy written only by `syncCustomer` from a fresh Stripe fetch; never edit it by hand. A nightly reconcile repairs any missed webhook.
+**Source of truth.** Billing changes are made in Stripe. DynamoDB is built from signed webhook events only (AWS holds no Stripe API key), plus the reader's opt-out; never edit it by hand. Stripe retries a failed webhook for up to 3 days; there is no reconcile, because that would need an API key.
 
 ### Bounces and complaints
 
@@ -122,34 +123,32 @@ Built with the AWS CLI instead of SAM, in **us-east-2**, because the account's o
 
 | Lambda | Endpoint | Does |
 |---|---|---|
-| `StripeSync` | `POST https://c3ftjhbd19.execute-api.us-east-2.amazonaws.com/stripe/sync` | The only webhook. `customer.subscription.created/updated/deleted` and `customer.updated/deleted` → `syncCustomer`. A direct invoke with `{"reconcile": true}` (nightly, EventBridge Scheduler) repairs the table. |
+| `StripeSync` | `POST https://c3ftjhbd19.execute-api.us-east-2.amazonaws.com/stripe/sync` | The only webhook. `checkout.session.completed`, `customer.subscription.created/updated/deleted` and `customer.updated/deleted` → `applyEvent` → `saveRow`. |
 | `UnsubscribeUser` | `POST https://c7d3yimc7d.execute-api.us-east-2.amazonaws.com/unsubscribe` and `/unsubscribe/one-click` | See **Unsubscribe** above. |
 
 `NewUser` is retired: its code is deleted, and its Lambda, API, role, Stripe endpoint and `/newsletter/new-user/webhook-secret` are deleted once `StripeSync` receives `customer.subscription.created`.
 
-**`syncCustomer(customerId)`** (`newsletter/lib.mjs`) fetches the customer and all its subscriptions, keeps those on `NEWSLETTER_PRODUCT_ID` (it throws if that is unset), picks the one that receives letters, else the newest, and writes the row with `UpdateItem`. The write is conditioned on `synced_at < fetch time`, so an older fetch never overwrites a newer one. A deleted customer, or one with no newsletter subscription, has its row deleted. Stripe calls pin `Stripe-Version: 2025-03-31.basil`.
+**`applyEvent(row, event)`** (`newsletter/rules.mjs`, pure and tested) builds the row from events alone: subscription events carry the plan (`isNewsletter` filters on `NEWSLETTER_PRODUCT_ID`, which must be set), `checkout.session.completed` and `customer.updated` carry the email. Each half keeps the time of the event it came from (`sub_event_at`, `email_event_at`), so an older event never overwrites a newer one. With two subscriptions on one customer, the one that gets letters wins. A new subscription created after the reader opted out clears the opt-out (resubscribe). **`saveRow`** (`lib.mjs`) reads the row, applies the change and writes it conditioned on its `rev` counter, retrying on a race.
 
-**Reconcile** lists live (`active`, `trialing`, `past_due`) subscriptions with pagination, projects each newsletter customer from that list, then re-reads any table row not in it unless the row is already ended and off the list. It logs `{live, scanned, changed, stale, deleted, errors}` and fails the invocation on any error; the `StripeSync-errors` CloudWatch alarm watches the function.
+Existing subscribers from before the webhook appear at their next renewal (`customer.subscription.updated`); until then they unsubscribe through the LinkedIn fallback.
 
-The table `stripe-sync-subscription-status` uses the key `username`, which holds the **Stripe customer id**. Attributes: `email`, `email_lc`, `subscription_id`, `status`, `cancel_at_period_end`, `current_period_end`, `email_opt_out`, `receives_letters`, `synced_at` (older rows may still have `updated_at`).
+The table `stripe-sync-subscription-status` uses the key `username`, which holds the **Stripe customer id**. Attributes: `email`, `email_lc`, `email_event_at`, `subscription_id`, `status`, `cancel_at_period_end`, `current_period_end`, `sub_live`, `sub_event_at`, `email_opt_out`, `opted_out_at`, `receives_letters`, `rev`, `updated_at`.
 
 Setup scripts (one-off, safe to re-run, all touch live AWS):
 
-- `setup-dynamodb.sh`: table; `NEWSLETTER_PRODUCT_ID` and `TABLE_NAME` on both functions; StripeSync may `UpdateItem`/`DeleteItem`/`Scan` (timeout 300 s), UnsubscribeUser may `GetItem`/`UpdateItem`/`DeleteItem`.
-- `setup-reconcile.sh`: the nightly schedule (07:00 UTC) and its invoke-only role; the error alarm (emails `ALARM_EMAIL` if set).
-- `setup-unsubscribe.sh`: the two POST routes, the route throttle, CORS; removes `GET /unsubscribe`.
+- `setup-dynamodb.sh`: table; `NEWSLETTER_PRODUCT_ID` and `TABLE_NAME` on both functions; StripeSync may `GetItem`/`PutItem`/`DeleteItem`, UnsubscribeUser may `GetItem`/`PutItem`; removes `STRIPE_KEY_PARAM`.
+- `setup-unsubscribe.sh`: the two POST routes, the route throttle, CORS; removes `GET /unsubscribe`; the SNS topic `newsletter-unsubscribes` with `OWNER_EMAIL` subscribed, and `sns:Publish` for UnsubscribeUser.
 - `link.sh <cus_id> [page]`: prints a test unsubscribe link.
 
-**Test mode** runs as a parameter swap on the same functions: point `STRIPE_KEY_PARAM`, `WEBHOOK_SECRET_PARAM` and `NEWSLETTER_PRODUCT_ID` at test-mode values (a test-mode newsletter product and price), test, then swap back. `stripe trigger` uses a fixture product the filter ignores, so test with a real checkout of the test product.
+**Test mode** runs as a parameter swap on the same functions: point `WEBHOOK_SECRET_PARAM` and `NEWSLETTER_PRODUCT_ID` at test-mode values (a test-mode newsletter product and price), test, then swap back. `stripe trigger` uses a fixture product the filter ignores, so test with a real checkout of the test product.
 
-**Go-live order** (each step changes live systems): set `NEWSLETTER_PRODUCT_ID` and run `setup-dynamodb.sh` → `deploy.sh` → add the 5 events to the StripeSync Stripe endpoint → `setup-reconcile.sh` and one reconcile → delete NewUser → `setup-unsubscribe.sh` and set `unsubscribeApiUrl` in `config.js`.
+**Go-live order** (each step changes live systems): `NEWSLETTER_PRODUCT_ID=prod_… setup-dynamodb.sh` → `OWNER_EMAIL=… setup-unsubscribe.sh` (confirm the SNS email) → `deploy.sh` → add the StripeSync endpoint in Stripe with the 6 events and store its `whsec_` in SSM → set `unsubscribeApiUrl` in `config.js` → delete NewUser.
 
 SSM SecureString parameters (set by hand, not in code):
 
 | Parameter | Value |
 |---|---|
 | `/newsletter/stripe-sync/webhook-secret` | `whsec_` of the Stripe endpoint for StripeSync |
-| `/newsletter/stripe-api-key` | Stripe restricted key: Subscriptions write, Customers read |
 | `/newsletter/unsubscribe-hmac-key` | Random string, e.g. `openssl rand -base64 32` |
 
 Not built yet: SES domain, `send-issue` (it builds each letter's link with `unsubscribePageUrl` and the one-click headers), welcome and goodbye emails.
@@ -158,5 +157,6 @@ Not built yet: SES domain, `send-issue` (it builds each letter's link with `unsu
 
 - **Sending domain**: buy a domain for the letter. It is step 1 of the build order.
 - **One-click unsubscribe**: letters stop at once and the subscription cancels at the end of the paid period. No refunds.
+- **No Stripe API key in AWS** (2026-11-12): Stripe → AWS by webhook only. Unsubscribe stops letters and emails the owner, who cancels the plan in the Stripe Dashboard within 2 days.
 - **Code home**: a `newsletter/` folder in this repo (Lambdas, SAM template, backfill script, its own `package.json`). GitHub Pages will serve these files; they hold no secrets. Update `CLAUDE.md` and `README.md` when it lands, because the repo is no longer "no package manager".
 - **PR #8** (formerly #7): keep its unsubscribe help page and the `book.html` script fix; drop the Buttondown docs.

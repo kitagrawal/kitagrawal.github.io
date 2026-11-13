@@ -2,14 +2,18 @@
 # One-off, safe to re-run: put UnsubscribeUser's two routes on its HTTP API, give them their own
 # low throttle, and allow the site's origin through CORS (us-east-2, profile "newsletter").
 #
-#   ./setup-unsubscribe.sh            # finds the API that already integrates UnsubscribeUser
-#   API_ID=abc123 ./setup-unsubscribe.sh
+#   OWNER_EMAIL=you@example.com ./setup-unsubscribe.sh   # finds the API that integrates UnsubscribeUser
+#   API_ID=abc123 OWNER_EMAIL=... ./setup-unsubscribe.sh
+#
+# OWNER_EMAIL gets an SNS email for each unsubscribe whose plan still bills, so the owner can cancel
+# it in the Stripe Dashboard (there is no Stripe API key). Confirm the subscription email AWS sends.
+# It may be left out on a re-run once the topic has a subscription.
 #
 # Routes: POST /unsubscribe (the hidden page), POST /unsubscribe/one-click (List-Unsubscribe-Post).
 # The old GET /unsubscribe confirm page is removed. Prints the URL for config.js.
 set -euo pipefail
 export AWS_PROFILE=newsletter AWS_REGION=us-east-2
-FN=UnsubscribeUser
+FN=UnsubscribeUser TOPIC=newsletter-unsubscribes
 ORIGINS="https://kitagrawal.github.io,http://localhost:8000"
 ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
 
@@ -61,6 +65,29 @@ aws apigatewayv2 update-stage --api-id "$API_ID" --stage-name "$STAGE" --route-s
 if [[ "$(aws apigatewayv2 get-stage --api-id "$API_ID" --stage-name "$STAGE" --query AutoDeploy --output text)" != "True" ]]; then
   aws apigatewayv2 create-deployment --api-id "$API_ID" --stage-name "$STAGE" --query DeploymentStatus --output text
 fi
+
+# 6. SNS topic that emails the owner; the function may publish to it and nothing else
+TOPIC_ARN=$(aws sns create-topic --name "$TOPIC" --tags Key=project,Value=newsletter --query TopicArn --output text)
+if [[ -n "${OWNER_EMAIL:-}" ]]; then
+  if aws sns list-subscriptions-by-topic --topic-arn "$TOPIC_ARN" --query 'Subscriptions[].Endpoint' --output text | grep -qxF "$OWNER_EMAIL"; then
+    echo "$OWNER_EMAIL already subscribed to $TOPIC"
+  else
+    aws sns subscribe --topic-arn "$TOPIC_ARN" --protocol email --notification-endpoint "$OWNER_EMAIL" >/dev/null
+    echo "Subscribed $OWNER_EMAIL to $TOPIC: confirm the email AWS just sent"
+  fi
+elif [[ -z "$(aws sns list-subscriptions-by-topic --topic-arn "$TOPIC_ARN" --query 'Subscriptions[0].Endpoint' --output text | grep -v None)" ]]; then
+  echo "Warning: $TOPIC has no subscriber; set OWNER_EMAIL and re-run" >&2
+fi
+role=$(aws lambda get-function-configuration --function-name "$FN" --query Role --output text)
+aws iam put-role-policy --role-name "${role##*/}" --policy-name sns-unsubscribes --policy-document "{
+  \"Version\": \"2012-10-17\",
+  \"Statement\": [{\"Effect\": \"Allow\", \"Action\": \"sns:Publish\", \"Resource\": \"$TOPIC_ARN\"}]
+}"
+vars=$(aws lambda get-function-configuration --function-name "$FN" --query Environment.Variables --output json)
+env=$(python3 -c 'import json,sys; v=json.loads(sys.argv[1]) or {}; v["UNSUBSCRIBE_TOPIC_ARN"]=sys.argv[2]; print(json.dumps({"Variables": v}))' "$vars" "$TOPIC_ARN")
+aws lambda update-function-configuration --function-name "$FN" --environment "$env" --query LastUpdateStatus --output text >/dev/null
+aws lambda wait function-updated-v2 --function-name "$FN"
+echo "$FN may publish to $TOPIC_ARN"
 
 base=$(aws apigatewayv2 get-api --api-id "$API_ID" --query ApiEndpoint --output text)
 [[ "$STAGE" == '$default' ]] || base="$base/$STAGE"
