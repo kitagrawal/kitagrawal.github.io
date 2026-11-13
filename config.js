@@ -40,6 +40,6 @@ window.SITE_CONFIG = {
     // cancelApiUrl: the CancelPlan API route (newsletter/setup-cancel.sh prints it). The hidden
     // unsubscribe.html page posts the c (Stripe customer id) from the letter's Cancel link here.
     // Leave "REPLACE" in it until the route is deployed; the page then tells readers to email support.
-    cancelApiUrl: "REPLACE: https://<api-id>.execute-api.us-east-2.amazonaws.com/cancel"
+    cancelApiUrl: "https://c7d3yimc7d.execute-api.us-east-2.amazonaws.com/cancel"
   }
 };
