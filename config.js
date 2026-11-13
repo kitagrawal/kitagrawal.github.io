@@ -44,6 +44,7 @@ window.SITE_CONFIG = {
     // turn on "Cancel subscriptions"). Fallback only: after unsubscribing, the cancel button opens Stripe's
     // cancel page with no login; if that link cannot be made, the reader is sent here instead, with their
     // email filled in. Must start with https://.
+    // portalUrl: "https://billing.stripe.com/p/login/fZu8wP8pM7aU9LY8sB08g00"
     portalUrl: "https://billing.stripe.com/p/login/fZu8wP8pM7aU9LY8sB08g00"
   }
 };
