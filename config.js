@@ -37,14 +37,9 @@ window.SITE_CONFIG = {
   newsletter: {
     price: "$7",   // text shown on the home page; "per month" is added there
     subscribeUrl: "https://buy.stripe.com/test_14A6oHaxU8eYgamfV308g01",
-    // unsubscribeApiUrl: the UnsubscribeUser API route (newsletter/setup-unsubscribe.sh prints it).
-    // The hidden unsubscribe.html page posts the reader's email and the c/t from their letter's link here.
-    unsubscribeApiUrl: "https://c7d3yimc7d.execute-api.us-east-2.amazonaws.com/unsubscribe",
-    // portalUrl: Stripe's customer portal login link (Dashboard > Settings > Billing > Customer portal;
-    // turn on "Cancel subscriptions"). Fallback only: after unsubscribing, the cancel button opens Stripe's
-    // cancel page with no login; if that link cannot be made, the reader is sent here instead, with their
-    // email filled in. Must start with https://.
-    // portalUrl: "https://billing.stripe.com/p/login/fZu8wP8pM7aU9LY8sB08g00"
-    portalUrl: "https://buy.stripe.com/test_14A6oHaxU8eYgamfV308g01"
+    // cancelApiUrl: the CancelPlan API route (newsletter/setup-cancel.sh prints it). The hidden
+    // unsubscribe.html page posts the c (Stripe customer id) from the letter's Cancel link here.
+    // Leave "REPLACE" in it until the route is deployed; the page then tells readers to email support.
+    cancelApiUrl: "REPLACE: https://<api-id>.execute-api.us-east-2.amazonaws.com/cancel"
   }
 };

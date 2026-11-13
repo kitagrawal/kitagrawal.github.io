@@ -1,12 +1,12 @@
-// Shared by the StripeSync and UnsubscribeUser Lambdas (zipped next to each index.mjs with rules.mjs).
+// Shared by the StripeSync and CancelPlan Lambdas (zipped next to each index.mjs with rules.mjs).
 // AWS SDK v3 ships with the Lambda Node runtime, so there is nothing to install.
 // Rows are built from signed webhook events only (see applyEvent). The one Stripe key is a restricted
-// key that can only open customer-portal sessions (portalCancelUrl); it cannot read or change data.
+// key (rk_) with only "Subscriptions: Write"; CancelPlan uses it to schedule a cancel (cancelSubscription).
 import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand, PutCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
-import { verifySignature, portalCancelForm, restrictedKey } from "./rules.mjs";
+import { verifySignature, cancelForm, restrictedKey } from "./rules.mjs";
 
 export * from "./rules.mjs";
 
@@ -53,38 +53,35 @@ export async function stripeEvent(event) {
   return { evt: JSON.parse(raw.toString("utf8")) };
 }
 
-// The restricted Stripe key from Secrets Manager (STRIPE_PORTAL_SECRET_ID), cached per warm container.
-let portalKeyCache;
-async function portalKey(id, fresh) {
-  if (fresh || !portalKeyCache) {
+// The restricted Stripe key from Secrets Manager (STRIPE_SECRET_ID), cached per warm container.
+let stripeKeyCache;
+async function stripeKey(id, fresh) {
+  if (fresh || !stripeKeyCache) {
     const r = await secrets.send(new GetSecretValueCommand({ SecretId: id }));
-    portalKeyCache = restrictedKey(r.SecretString);
+    stripeKeyCache = restrictedKey(r.SecretString);
   }
-  if (!portalKeyCache) throw new Error("secret holds no rk_ restricted key");
-  return portalKeyCache;
+  if (!stripeKeyCache) throw new Error("secret holds no rk_ restricted key");
+  return stripeKeyCache;
 }
 
-// A Stripe customer-portal link that opens on "Cancel subscription", no login. The key is a restricted
-// key (rk_) with only "Customer portal: Write"; a full sk_ key is refused. Links expire within minutes,
-// so make one per click. Returns null when the key is missing or Stripe refuses; the page then falls
-// back to the portal's login link.
-export async function portalCancelUrl(customer, subscription) {
-  const id = process.env.STRIPE_PORTAL_SECRET_ID;
-  if (!id || !subscription) return null;
-  const call = async (fresh) => fetch("https://api.stripe.com/v1/billing_portal/sessions", {
+// Ask Stripe to end a subscription at the end of its paid period. The key is a restricted key (rk_)
+// with only "Subscriptions: Write"; a full sk_ key is refused. Returns Stripe's reply (the updated
+// subscription, or its error object), or null when the key is missing or the call fails.
+export async function cancelSubscription(subscription) {
+  const id = process.env.STRIPE_SECRET_ID;
+  if (!id) return null;
+  const call = async (fresh) => fetch(`https://api.stripe.com/v1/subscriptions/${encodeURIComponent(subscription)}`, {
     method: "POST",
-    headers: { authorization: `Bearer ${await portalKey(id, fresh)}`, "content-type": "application/x-www-form-urlencoded" },
-    body: portalCancelForm(customer, subscription, process.env.PORTAL_RETURN_URL || "https://kitagrawal.github.io/"),
+    headers: { authorization: `Bearer ${await stripeKey(id, fresh)}`, "content-type": "application/x-www-form-urlencoded" },
+    body: cancelForm(),
     signal: AbortSignal.timeout(8000),
   });
   try {
     let res = await call(false);
     if (res.status === 401) res = await call(true); // key rotated: re-read the secret once
-    const out = await res.json().catch(() => ({}));
-    if (!res.ok || typeof out.url !== "string") throw new Error(out?.error?.message || `HTTP ${res.status}`);
-    return out.url;
+    return await res.json();
   } catch (e) {
-    console.error(JSON.stringify({ portal: customer, error: e.message }));
+    console.error(JSON.stringify({ cancel: subscription, error: e.message }));
     return null;
   }
 }

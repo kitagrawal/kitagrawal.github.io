@@ -3,8 +3,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import {
-  receivesLetters, isNewsletter, applyEvent, customerOf, optOut, stillBilling, sameEmail,
-  verifySignature, unsubscribeToken, checkToken, unsubscribePageUrl, portalCancelForm, restrictedKey,
+  receivesLetters, isNewsletter, applyEvent, customerOf, cancelDecision, needsCancel, cancelForm, cancelReply,
+  cancelPageUrl, verifySignature, restrictedKey,
 } from "./rules.mjs";
 
 const PROD = "prod_letter";
@@ -22,9 +22,16 @@ test("receivesLetters: live statuses get letters", () => {
   }
 });
 
-test("receivesLetters: cancel at period end, cancel_at, pause and opt-out stop letters", () => {
-  assert.equal(receivesLetters(sub({ cancel_at_period_end: true })), false);
-  assert.equal(receivesLetters(sub({ cancel_at: 12345 })), false);
+test("receivesLetters: a scheduled cancel on a live plan still gets letters", () => {
+  for (const status of ["active", "trialing", "past_due"]) {
+    assert.equal(receivesLetters(sub({ status, cancel_at_period_end: true })), true, status);
+    assert.equal(receivesLetters(sub({ status, cancel_at: 12345 })), true, status);
+  }
+  assert.equal(receivesLetters(sub({ status: "canceled", cancel_at_period_end: true })), false);
+  assert.equal(receivesLetters(sub({ status: "canceled", cancel_at: 12345 })), false);
+});
+
+test("receivesLetters: pause and metadata opt-out stop letters", () => {
   assert.equal(receivesLetters(sub({ pause_collection: { behavior: "void" } })), false);
   assert.equal(receivesLetters(sub({ metadata: { email_opt_out: "true" } })), false);
   assert.equal(receivesLetters(sub({ metadata: { email_opt_out: "false" } })), true);
@@ -89,24 +96,30 @@ test("applyEvent: two subscriptions -> keep the one that gets letters", () => {
   assert.equal(row.receives_letters, true);
 });
 
-test("applyEvent: cancel at period end, cancel_at, pause, past_due", () => {
-  assert.equal(play(checkout(), subEv({ cancel_at_period_end: true })).receives_letters, false);
-  assert.equal(play(checkout(), subEv({ cancel_at: 5 })).cancel_at_period_end, true);
+test("applyEvent: a scheduled cancel keeps letters until Stripe reports canceled; pause stops them", () => {
+  assert.equal(play(checkout(), subEv({ cancel_at_period_end: true })).receives_letters, true);
+  const scheduled = play(checkout(), subEv({ cancel_at: 5 }));
+  assert.equal(scheduled.cancel_at_period_end, true);
+  assert.equal(scheduled.receives_letters, true);
+  const ended = play(checkout(), subEv({ cancel_at_period_end: true }, 1100), subEv({ status: "canceled", cancel_at_period_end: true }, 1200, "customer.subscription.deleted"));
+  assert.equal(ended.receives_letters, false);
   assert.equal(play(checkout(), subEv({ pause_collection: { behavior: "void" } })).receives_letters, false);
   assert.equal(play(checkout(), subEv({ status: "past_due" })).receives_letters, true);
 });
 
-test("optOut: letters stop and stay stopped through later webhooks, including the owner's cancel", () => {
-  let row = optOut(play(checkout(), subEv()), 1100);
-  assert.equal(row.receives_letters, false);
-  assert.equal(stillBilling(row), true); // billing continues until the reader cancels in Stripe's portal
+test("legacy opt-out row stays receives_letters false even with a live plan and a scheduled cancel", () => {
+  const row = { ...play(checkout(), subEv({ cancel_at_period_end: true })), email_opt_out: true };
+  assert.equal(applyEvent(row, subEv({ cancel_at_period_end: true }, 1300), PROD).row.receives_letters, false);
+});
+
+test("legacy opt-out stays blocked through later webhooks, including a cancel", () => {
+  let row = { ...play(checkout(), subEv()), email_opt_out: true, opted_out_at: 1100, receives_letters: false };
   for (const e of [subEv({}, 1200), subEv({ cancel_at_period_end: true }, 1300), subEv({ status: "canceled" }, 1400, "customer.subscription.deleted")]) {
     row = applyEvent(row, e, PROD).row;
     assert.equal(row.email_opt_out, true);
     assert.equal(row.receives_letters, false);
   }
   assert.equal(row.status, "canceled");
-  assert.equal(stillBilling(row), false);
 });
 
 test("applyEvent: Stripe metadata email_opt_out also opts out", () => {
@@ -114,7 +127,7 @@ test("applyEvent: Stripe metadata email_opt_out also opts out", () => {
 });
 
 test("applyEvent: a new subscription after opting out is a resubscribe", () => {
-  const out = optOut(play(checkout(), subEv({ id: "sub_a" })), 1100);
+  const out = { ...play(checkout(), subEv({ id: "sub_a" })), email_opt_out: true, opted_out_at: 1100, receives_letters: false };
   const back = applyEvent(out, subEv({ id: "sub_b", created: 1200 }, 1200, "customer.subscription.created"), PROD).row;
   assert.equal(back.subscription_id, "sub_b");
   assert.equal(back.email_opt_out, false);
@@ -129,14 +142,6 @@ test("applyEvent: customer.updated changes a known reader's email only; customer
   assert.equal(applyEvent(undefined, ev("customer.deleted", { id: "cus_1" }), PROD).action, "skip");
 });
 
-test("sameEmail: case and spaces ignored; empty never matches", () => {
-  assert.equal(sameEmail("Reader@Example.com", " reader@example.COM "), true);
-  assert.equal(sameEmail("a@example.com", "b@example.com"), false);
-  assert.equal(sameEmail("", ""), false);
-  assert.equal(sameEmail(null, "a@example.com"), false);
-  assert.equal(sameEmail("a@example.com", undefined), false);
-});
-
 test("verifySignature", () => {
   const secret = "whsec_test", raw = Buffer.from('{"id":"evt_1"}'), t = 1_700_000_000;
   const v1 = createHmac("sha256", secret).update(`${t}.`).update(raw).digest("hex");
@@ -147,33 +152,90 @@ test("verifySignature", () => {
   assert.equal(verifySignature(raw, undefined, secret, t), false);
 });
 
-test("checkToken and unsubscribePageUrl", () => {
-  const key = "k";
-  const t = unsubscribeToken("cus_ABC", key);
-  assert.equal(checkToken("cus_ABC", t, key), true);
-  assert.equal(checkToken("cus_ABD", t, key), false);
-  assert.equal(checkToken("cus_ABC", t.slice(1), key), false);
-  assert.equal(checkToken("sub_ABC", unsubscribeToken("sub_ABC", key), key), false);
-  assert.equal(checkToken(undefined, t, key), false);
-  assert.equal(
-    unsubscribePageUrl("https://kitagrawal.github.io/unsubscribe.html", "cus_ABC", key),
-    `https://kitagrawal.github.io/unsubscribe.html?c=cus_ABC&t=${t}`,
-  );
+const row = (o = {}) => ({ username: "cus_ABC", subscription_id: "sub_1", status: "active", cancel_at_period_end: false, ...o });
+
+test("cancelDecision: a live plan with no scheduled cancel is cancelled", () => {
+  for (const status of ["active", "trialing", "past_due"]) {
+    assert.deepEqual(cancelDecision("cus_ABC", row({ status })), { action: "cancel", subscription: "sub_1" }, status);
+  }
+  // a legacy opted-out reader who still pays can cancel too
+  assert.equal(cancelDecision("cus_ABC", row({ email_opt_out: true })).action, "cancel");
 });
 
-test("portalCancelForm opens the cancel flow for one subscription and returns to the site", () => {
-  const p = new URLSearchParams(portalCancelForm("cus_1", "sub_1", "https://kitagrawal.github.io/"));
-  assert.equal(p.get("customer"), "cus_1");
-  assert.equal(p.get("flow_data[type]"), "subscription_cancel");
-  assert.equal(p.get("flow_data[subscription_cancel][subscription]"), "sub_1");
-  assert.equal(p.get("flow_data[after_completion][type]"), "redirect");
-  assert.equal(p.get("flow_data[after_completion][redirect][return_url]"), "https://kitagrawal.github.io/");
-  assert.equal(p.get("return_url"), "https://kitagrawal.github.io/");
+test("cancelDecision: every other case is the same support answer", () => {
+  const support = { action: "support" };
+  assert.deepEqual(cancelDecision("cus_ABC", undefined), support);
+  assert.deepEqual(cancelDecision("cus_ABC", row({ cancel_at_period_end: true })), support);
+  for (const status of ["canceled", "incomplete_expired", "incomplete", "unpaid", "paused"]) {
+    assert.deepEqual(cancelDecision("cus_ABC", row({ status })), support, status);
+  }
+  assert.deepEqual(cancelDecision("cus_ABC", row({ subscription_id: undefined })), support);
+  assert.deepEqual(cancelDecision("cus_ABC", row({ subscription_id: "" })), support);
+  for (const bad of [undefined, null, "", "sub_ABC", "cus_", "cus_a b", "cus_ABC&x=1", 42, { c: "cus_ABC" }]) {
+    assert.deepEqual(cancelDecision(bad, row()), support, String(bad));
+  }
+});
+
+test("needsCancel: opted out, live plan, no scheduled cancel is picked", () => {
+  for (const status of ["active", "trialing", "past_due"]) {
+    assert.equal(needsCancel(row({ email_opt_out: true, status })), true, status);
+  }
+});
+
+test("needsCancel: not opted out, ended, no plan or already cancelling is not picked", () => {
+  assert.equal(needsCancel(row()), false);
+  assert.equal(needsCancel(row({ email_opt_out: false })), false);
+  assert.equal(needsCancel(row({ email_opt_out: "true" })), false);
+  assert.equal(needsCancel(row({ email_opt_out: true, cancel_at_period_end: true })), false);
+  for (const status of ["canceled", "incomplete_expired", "incomplete", "unpaid", "paused"]) {
+    assert.equal(needsCancel(row({ email_opt_out: true, status })), false, status);
+  }
+  assert.equal(needsCancel(row({ email_opt_out: true, subscription_id: undefined })), false);
+  assert.equal(needsCancel(row({ email_opt_out: true, username: "not-a-customer" })), false);
+  assert.equal(needsCancel(undefined), false);
+});
+
+test("needsCancel: after the webhook records the scheduled cancel the row is not picked again", () => {
+  const before = row({ email_opt_out: true });
+  const after = applyEvent(before, { type: "customer.subscription.updated", created: 5,
+    data: { object: sub({ cancel_at_period_end: true }) } }, PROD).row;
+  assert.equal(needsCancel(before), true);
+  assert.equal(needsCancel({ ...before, ...after }), false);
+});
+
+test("cancelForm schedules the cancel for the end of the paid period", () => {
+  const p = new URLSearchParams(cancelForm());
+  assert.equal(p.get("cancel_at_period_end"), "true");
+  assert.deepEqual([...p.keys()], ["cancel_at_period_end"]);
+});
+
+test("cancelReply: a scheduled cancel gives the period end, from the subscription or its first item", () => {
+  assert.deepEqual(cancelReply({ cancel_at_period_end: true, current_period_end: 1800000000 }), { done: true, until: 1800000000 });
+  assert.deepEqual(cancelReply(sub({ cancel_at_period_end: true })), { done: true, until: 999 });
+});
+
+test("cancelReply: anything else is the support answer", () => {
+  const support = { error: "support" };
+  assert.deepEqual(cancelReply({ error: { message: "No such subscription" } }), support);
+  assert.deepEqual(cancelReply({ error: { message: "x" }, cancel_at_period_end: true, current_period_end: 5 }), support);
+  assert.deepEqual(cancelReply(sub({ cancel_at_period_end: false })), support); // Stripe did not schedule it
+  assert.deepEqual(cancelReply({ cancel_at_period_end: true }), support); // no period end to show
+  assert.deepEqual(cancelReply(null), support);
+  assert.deepEqual(cancelReply(undefined), support);
+  assert.deepEqual(cancelReply({}), support);
+});
+
+test("cancelPageUrl carries only the customer id", () => {
+  assert.equal(
+    cancelPageUrl("https://kitagrawal.github.io/unsubscribe.html", "cus_ABC"),
+    "https://kitagrawal.github.io/unsubscribe.html?c=cus_ABC",
+  );
+  assert.equal(cancelPageUrl("http://localhost:8000/unsubscribe.html", "cus a&b"), "http://localhost:8000/unsubscribe.html?c=cus%20a%26b");
 });
 
 test("restrictedKey takes only an rk_ key, plain or inside JSON", () => {
   assert.equal(restrictedKey("rk_live_abc123"), "rk_live_abc123");
-  assert.equal(restrictedKey(' {"portal_key": "rk_test_x9"} '), "rk_test_x9");
+  assert.equal(restrictedKey(' {"stripe_key": "rk_test_x9"} '), "rk_test_x9");
   assert.equal(restrictedKey('{"secret": "sk_live_x", "restricted": "rk_live_y"}'), "rk_live_y");
   assert.equal(restrictedKey("sk_live_abc123"), null);
   assert.equal(restrictedKey('{"key": "sk_live_abc"}'), null);

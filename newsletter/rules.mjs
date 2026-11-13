@@ -6,12 +6,12 @@ const LETTER_STATUSES = ["active", "trialing", "past_due"];
 const ENDED = ["canceled", "incomplete_expired"];
 export const isEnded = (status) => ENDED.includes(status);
 
-// "This subscription gets letters", from the subscription alone. applyEvent stores it as sub_live
-// and combines it with the reader's opt-out into the row's receives_letters.
+// "This subscription gets letters", from the subscription alone. A scheduled cancel
+// (cancel_at_period_end or cancel_at) does not stop letters: they run until Stripe reports the
+// plan canceled. applyEvent stores this as sub_live and combines it with the reader's legacy
+// opt-out into the row's receives_letters.
 export const receivesLetters = (sub) =>
   LETTER_STATUSES.includes(sub.status) &&
-  !sub.cancel_at_period_end &&
-  !sub.cancel_at &&
   !sub.pause_collection &&
   sub.metadata?.email_opt_out !== "true";
 
@@ -96,22 +96,32 @@ export function applyEvent(row, evt, productId) {
   }
 }
 
-// The reader unsubscribed (page or one-click). nowSec is unix seconds, like Stripe's times.
-export const optOut = (row, nowSec) => finish({ ...row, email_opt_out: true, opted_out_at: nowSec }).row;
+// The cancel link's customer id: the only proof the cancel page and CancelPlan ask for (ADR 0001).
+const CUSTOMER_ID = /^cus_[A-Za-z0-9]+$/;
 
-// True while Stripe will still charge for the plan, so the reader still has to cancel it in Stripe's portal.
-export const stillBilling = (row) => Boolean(row && LIVE(row.status) && !row.cancel_at_period_end);
+// What CancelPlan does for a customer id and its table row (or undefined): { action: "cancel",
+// subscription } for a live plan with no scheduled cancel, otherwise { action: "support" } (bad id,
+// no row, no plan, already cancelling, ended). One answer for every case, so ids cannot be probed.
+export const cancelDecision = (c, row) =>
+  typeof c === "string" && CUSTOMER_ID.test(c) && row?.subscription_id && LIVE(row.status) && !row.cancel_at_period_end
+    ? { action: "cancel", subscription: row.subscription_id }
+    : { action: "support" };
 
-// Form body for Stripe's POST /v1/billing_portal/sessions: a customer-portal page that opens
-// straight on "Cancel subscription" for this subscription, with no login, and goes to returnUrl after.
-export const portalCancelForm = (customer, subscription, returnUrl) => new URLSearchParams({
-  customer,
-  return_url: returnUrl,
-  "flow_data[type]": "subscription_cancel",
-  "flow_data[subscription_cancel][subscription]": subscription,
-  "flow_data[after_completion][type]": "redirect",
-  "flow_data[after_completion][redirect][return_url]": returnUrl,
-}).toString();
+// Legacy opt-outs still billing: the rows cancel-opt-outs.sh cancels at period end. True when the
+// reader has the legacy email_opt_out flag and cancelDecision would cancel the plan (live, none
+// scheduled). Once the webhook records the scheduled cancel the row stops matching, so a re-run picks nobody.
+export const needsCancel = (row) =>
+  row?.email_opt_out === true && cancelDecision(row.username, row).action === "cancel";
+
+// Form body for Stripe's POST /v1/subscriptions/{id}: the plan ends when the paid period does.
+export const cancelForm = () => new URLSearchParams({ cancel_at_period_end: "true" }).toString();
+
+// Stripe's reply to that call (the subscription object, or anything else on failure) -> the page's
+// answer: { done: true, until } with the paid period's end (unix seconds), or { error: "support" }.
+export function cancelReply(stripeSub) {
+  const until = stripeSub && !stripeSub.error ? periodEnd(stripeSub) : null;
+  return stripeSub?.cancel_at_period_end === true && Number.isFinite(until) ? { done: true, until } : { error: "support" };
+}
 
 // A Secrets Manager value -> the Stripe restricted key in it, or null. Accepts the plain key or a
 // JSON object holding it under any field. Only rk_ keys: a full sk_ secret key is never used here.
@@ -121,10 +131,6 @@ export function restrictedKey(secretString) {
   try { const o = JSON.parse(s); if (o && typeof o === "object") values = Object.values(o); } catch {}
   return values.find((v) => typeof v === "string" && /^rk_(live|test)_\w+$/.test(v.trim()))?.trim() ?? null;
 }
-
-export const sameEmail = (a, b) =>
-  typeof a === "string" && typeof b === "string" && a.trim() !== "" &&
-  a.trim().toLowerCase() === b.trim().toLowerCase();
 
 // Stripe-Signature: t=<unix>,v1=<hex hmac>[,v1=...]; the signed payload is "<t>.<raw body>".
 export function verifySignature(raw, header, secret, now = Date.now() / 1000) {
@@ -143,17 +149,5 @@ export function verifySignature(raw, header, secret, now = Date.now() / 1000) {
   });
 }
 
-// Token for the unsubscribe link: HMAC of the customer id, so nobody can unsubscribe someone else.
-export const unsubscribeToken = (customerId, key) =>
-  createHmac("sha256", key).update(customerId).digest("base64url");
-
-export function checkToken(c, t, key) {
-  if (typeof c !== "string" || typeof t !== "string" || !/^cus_[A-Za-z0-9]+$/.test(c)) return false;
-  const expected = Buffer.from(unsubscribeToken(c, key));
-  const got = Buffer.from(t);
-  return got.length === expected.length && timingSafeEqual(got, expected);
-}
-
-// The letter's unsubscribe link (send-issue and link.sh use this).
-export const unsubscribePageUrl = (base, customerId, key) =>
-  `${base}?c=${encodeURIComponent(customerId)}&t=${unsubscribeToken(customerId, key)}`;
+// The Cancel link at the bottom of a letter (send-issue and link.sh use this).
+export const cancelPageUrl = (base, customerId) => `${base}?c=${encodeURIComponent(customerId)}`;

@@ -1,4 +1,4 @@
-/* Styles only for book.html, the legal pages (terms, privacy, consent, contact), unsubscribe.html and 404.html.
+/* Styles only for book.html, the legal pages (terms, privacy, consent, contact), unsubscribe.html (the cancel page) and 404.html.
    Load after base.css, which holds tokens, header, buttons, offers, price and footer. */
 
 /* ---------- page frame: footer sticks to the bottom ---------- */
@@ -22,49 +22,34 @@ section.block{padding:40px 0 72px}
 .steps h3{font-size:17px}
 .steps p{color:var(--muted);font-size:15px}
 
-/* ---------- unsubscribe.html ---------- */
-/* data-state: ready (form on) | locked (form shown but disabled, .unsub-note says why) | done. */
+/* ---------- unsubscribe.html (the cancel page) ---------- */
+/* data-state: ready (Confirm on) | locked (Confirm off, .unsub-note says why) | done | support. */
 .unsub{padding:112px 0 80px}
 .unsub .wrap{max-width:calc(640px + 48px)}
-.unsub-step{display:none}
-.unsub:not([data-state="done"]) [data-show="form"],
-.unsub[data-state="done"] [data-show="done"]{display:block}
+.unsub-step{display:none;outline:none}
+.unsub[data-state="ready"] [data-show="ask"],
+.unsub[data-state="locked"] [data-show="ask"],
+.unsub[data-state="done"] [data-show="done"],
+.unsub[data-state="support"] [data-show="support"]{display:block}
 .unsub-note{margin-top:28px;padding:14px 20px;border-radius:12px;background:var(--accent-soft);color:var(--ink);font-size:15px;line-height:1.6;max-width:56ch}
-.unsub-note + .unsub-form{margin-top:24px}
-.unsub-row input:disabled{opacity:.55;cursor:not-allowed}
-.unsub[data-state="locked"] .unsub-form label{color:var(--muted)}
-.unsub[data-state="locked"] .unsub-row .btn{opacity:.4;cursor:not-allowed}
 .unsub h1{font-size:clamp(36px,5.2vw,56px);line-height:1.08;letter-spacing:-.02em;margin-bottom:16px;text-wrap:balance}
 .unsub .lead{max-width:56ch}
-
-.unsub-form{margin-top:36px;display:flex;flex-direction:column;gap:10px}
-.unsub-form label{font-size:15px;font-weight:600}
-.unsub-row{display:flex;gap:12px;flex-wrap:wrap}
-.unsub-row input{flex:1 1 260px;min-width:0;padding:15px 22px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);caret-color:var(--accent);font:400 17px/1.5 'Inter',system-ui,sans-serif;transition:border-color .2s,box-shadow .2s}
-.unsub-row input:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
-.unsub-row input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
-.unsub-row input[aria-invalid="true"]{border-color:var(--warm);box-shadow:0 0 0 4px color-mix(in srgb,var(--warm) 16%,transparent)}
-.unsub-row .btn:disabled{opacity:.6;cursor:progress;transform:none}
-.unsub-msg{min-height:1.5em;font-size:15px;line-height:1.5;color:var(--warm);padding-left:22px}
-.unsub-msg:empty{min-height:0}
+.unsub .lead a{color:var(--ink);text-underline-offset:3px;text-decoration-color:var(--accent)}
 
 .unsub-facts{list-style:none;margin-top:36px;padding-top:24px;border-top:1px solid var(--line);display:grid;gap:10px;color:var(--muted);font-size:15px;line-height:1.6}
 .unsub-facts strong{color:var(--ink);font-weight:600}
+.unsub-step .btns{margin-top:32px}
+.unsub .btn:disabled{cursor:progress}
 
-.unsub-done{outline:none;animation:unsub-in .6s cubic-bezier(.16,1,.3,1) both}
+.unsub-done{animation:unsub-in .6s cubic-bezier(.16,1,.3,1) both}
 .unsub-mark{width:56px;height:56px;margin-bottom:24px;fill:var(--accent-soft);stroke:var(--accent);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
 .unsub-mark path{fill:none;stroke-dasharray:30;stroke-dashoffset:30;animation:unsub-tick .5s .25s cubic-bezier(.16,1,.3,1) forwards}
-.unsub-done .btns{margin-top:32px}
-.unsub-billing{margin-top:28px;padding:20px 24px;border-radius:14px;background:var(--accent-soft);max-width:56ch}
-.unsub-billing p{margin-bottom:16px;line-height:1.55}
-.unsub-billing[hidden]{display:none}
-.btn.quiet{border-color:transparent;color:var(--muted);font-weight:500;padding-left:12px;padding-right:12px}
-.btn.quiet:hover{color:var(--ink);transform:none}
 @keyframes unsub-in{from{opacity:0;transform:translateY(8px)}}
 @keyframes unsub-tick{to{stroke-dashoffset:0}}
 
 .unsub-help{margin-top:56px;font-size:14px;color:var(--muted)}
 .unsub-help a{color:var(--ink);text-underline-offset:3px;text-decoration-color:var(--accent)}
+.unsub[data-state="support"] .unsub-help{display:none}
 .unsub ::selection{background:var(--accent-soft);color:var(--ink)}
 
 /* ---------- terms, privacy, consent, contact: one plain numbered document ---------- */
@@ -87,7 +72,7 @@ footer nav a[aria-current="page"]{color:var(--ink)}
 /* ---------- responsive and motion ---------- */
 @media(max-width:600px){
   .page-hero{padding:40px 0 32px}
-  .btns .btn,.unsub-row .btn{width:100%}
+  .btns .btn{width:100%}
   .unsub{padding:56px 0 56px}
   .offer{padding:24px}
 }
