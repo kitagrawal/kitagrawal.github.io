@@ -1,2 +1,5 @@
+.aws-sam/
 CLAUDE.md
 PRODUCT.md
+newsletter/drafts/*.html
+__pycache__/

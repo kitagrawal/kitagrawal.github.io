@@ -1,3 +1,5 @@
+> **Superseded (2026-11-13).** The Node Lambdas this plan describes (StripeSync, CancelPlan, SendIssue) were replaced by the Python SAM stack in `newsletter/api/`. Its README is the current design; the Cancel flow and ADRs 0001/0002 still hold.
+
 # Plan: paid newsletter on Stripe + AWS SES
 
 Status: subscriber sync and Cancel built (see **Built so far**); SES sending, `send-issue` and the welcome email are not. Diagram: [`architecture.html`](architecture.html) (open it in a browser; its source is `architecture.archify.json`).

@@ -1,0 +1,226 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Newsletter backend - Stripe subscribers synced to DynamoDB, emails via SES
+
+Parameters:
+  FromAddress:
+    Type: String
+    Description: Sender, e.g. "My Newsletter <news@example.com>" (domain must be a verified SES identity)
+  SesDomain:
+    Type: String
+    Description: Domain to verify in SES, e.g. example.com
+  CreateSesIdentity:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: Set to 'false' if the SES domain identity already exists in this region
+  SsmPrefix:
+    Type: String
+    Default: newsletter
+    Description: SSM parameter prefix (no leading slash). Parameters you create - see README.
+  NewsletterProductId:
+    Type: String
+    AllowedPattern: '^prod_[A-Za-z0-9]+$'
+    Description: Stripe product id of the newsletter plan; subscriptions to other products are ignored
+  StripeSecretId:
+    Type: String
+    Default: applied-ai-letter/stripe
+    Description: Secrets Manager JSON secret with STRIPE_SECRET_KEY (rk_) and STRIPE_WEBHOOK_SECRET (whsec_)
+  SiteOrigin:
+    Type: String
+    Default: https://kitagrawal.github.io
+    Description: Origin of the site whose unsubscribe.html posts to /cancel
+  SendRatePerSecond:
+    Type: Number
+    Default: 10
+    Description: Keep at or below your SES max send rate
+
+Conditions:
+  CreateIdentity: !Equals [!Ref CreateSesIdentity, 'true']
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Architectures: [arm64]
+    Timeout: 30
+    MemorySize: 256
+    CodeUri: src/
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref SubscribersTable
+        FROM_ADDRESS: !Ref FromAddress
+        CONFIG_SET: !Sub '${AWS::StackName}-events'
+        SSM_PREFIX: !Sub '/${SsmPrefix}'
+        SEND_RATE: !Ref SendRatePerSecond
+        NEWSLETTER_PRODUCT_ID: !Ref NewsletterProductId
+        STRIPE_SECRET_ID: !Ref StripeSecretId
+  HttpApi:
+    CorsConfiguration:
+      AllowOrigins: [!Ref SiteOrigin]
+      AllowMethods: [POST]
+      AllowHeaders: [content-type]
+
+Resources:
+  SubscribersTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - {AttributeName: email, AttributeType: S}
+        - {AttributeName: stripe_customer_id, AttributeType: S}
+      KeySchema:
+        - {AttributeName: email, KeyType: HASH}
+      GlobalSecondaryIndexes:
+        - IndexName: customer-index
+          KeySchema:
+            - {AttributeName: stripe_customer_id, KeyType: HASH}
+          Projection: {ProjectionType: ALL}
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  # ---------- SES ----------
+  SesConfigSet:
+    Type: AWS::SES::ConfigurationSet
+    Properties:
+      Name: !Sub '${AWS::StackName}-events'
+
+  SesEventsTopic:
+    Type: AWS::SNS::Topic
+
+  SesEventsTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref SesEventsTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {Service: ses.amazonaws.com}
+            Action: sns:Publish
+            Resource: !Ref SesEventsTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+
+  SesEventDestination:
+    Type: AWS::SES::ConfigurationSetEventDestination
+    Properties:
+      ConfigurationSetName: !Ref SesConfigSet
+      EventDestination:
+        Name: bounces-complaints
+        Enabled: true
+        MatchingEventTypes: [BOUNCE, COMPLAINT]
+        SnsDestination:
+          TopicARN: !Ref SesEventsTopic
+
+  SesIdentity:
+    Type: AWS::SES::EmailIdentity
+    Condition: CreateIdentity
+    Properties:
+      EmailIdentity: !Ref SesDomain
+      ConfigurationSetAttributes:
+        ConfigurationSetName: !Ref SesConfigSet
+
+  # ---------- API + functions ----------
+  StripeWebhookFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: stripe_webhook.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource: !Sub 'arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${StripeSecretId}-*'
+        - DynamoDBCrudPolicy: {TableName: !Ref SubscribersTable}
+        - SSMParameterReadPolicy: {ParameterName: !Sub '${SsmPrefix}/*'}
+        - Statement:
+            - Effect: Allow
+              Action: ses:SendEmail
+              Resource: '*'
+      Events:
+        Webhook:
+          Type: HttpApi
+          Properties: {Path: /stripe/webhook, Method: POST}
+
+  ReconcileFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: reconcile.handler
+      Timeout: 300
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource: !Sub 'arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${StripeSecretId}-*'
+        - DynamoDBCrudPolicy: {TableName: !Ref SubscribersTable}
+        - SSMParameterReadPolicy: {ParameterName: !Sub '${SsmPrefix}/*'}
+      Events:
+        Daily:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 day)
+
+  SendFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: send_newsletter.handler
+      Timeout: 900
+      Policies:
+        - DynamoDBReadPolicy: {TableName: !Ref SubscribersTable}
+        - SSMParameterReadPolicy: {ParameterName: !Sub '${SsmPrefix}/*'}
+        - Statement:
+            - Effect: Allow
+              Action: ses:SendEmail
+              Resource: '*'
+            # HTTP API caps requests at 30s, so the endpoint re-invokes this function async to do the sending
+            - Effect: Allow
+              Action: lambda:InvokeFunction
+              Resource: !Sub 'arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-SendFunction-*'
+      Events:
+        Send:
+          Type: HttpApi
+          Properties: {Path: /send, Method: POST}
+
+  # The letter's Unsubscribe link opens unsubscribe.html on the site, which posts {c} here (ADR 0001).
+  CancelFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: cancel.handler
+      Timeout: 15
+      Policies:
+        - DynamoDBReadPolicy: {TableName: !Ref SubscribersTable}
+        - Statement:
+            - Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource: !Sub 'arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${StripeSecretId}-*'
+      Events:
+        Cancel:
+          Type: HttpApi
+          Properties: {Path: /cancel, Method: POST}
+
+  SesEventsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: ses_events.handler
+      Policies:
+        - DynamoDBCrudPolicy: {TableName: !Ref SubscribersTable}
+      Events:
+        Sns:
+          Type: SNS
+          Properties: {Topic: !Ref SesEventsTopic}
+
+Outputs:
+  ApiUrl:
+    Description: Base URL. Stripe webhook endpoint is <ApiUrl>/stripe/webhook
+    Value: !Sub 'https://${ServerlessHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}'
+  CancelApiUrl:
+    Description: config.js newsletter.cancelApiUrl
+    Value: !Sub 'https://${ServerlessHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/cancel'
+  ReconcileFunctionName:
+    Value: !Ref ReconcileFunction
+  SendFunctionName:
+    Value: !Ref SendFunction
+  TableName:
+    Value: !Ref SubscribersTable

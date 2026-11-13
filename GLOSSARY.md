@@ -16,18 +16,18 @@ _Avoid_: Subscription (in reader-facing copy), membership
 One issue of the newsletter, emailed to every reader whose plan is live.
 _Avoid_: Issue, email, newsletter (for a single send)
 
-**Cancel**:
-The reader ends their plan at the end of the period they have paid for. Letters continue until then, and nothing renews. The only way a reader leaves.
-_Avoid_: Unsubscribe, opt out, stop letters
+**Unsubscribe**:
+The reader ends their paid plan at the end of the period they have paid for. Letters continue until then, and nothing renews. The only way a reader leaves. In code and Stripe it is still called cancel (`/cancel`, `cancel_at_period_end`).
+_Avoid_: Cancel (in reader-facing text), opt out, stop letters
 
-**Cancel link**:
-The link at the bottom of every letter that opens the cancel page for that reader.
-_Avoid_: Unsubscribe link
+**Unsubscribe link**:
+The link at the bottom of every letter that opens the unsubscribe page for that reader (`{{cancel_url}}` in code).
+_Avoid_: Cancel link
 
 **Paid period**:
-The stretch of time the reader's last payment covers; a cancelled plan ends when it ends.
+The stretch of time the reader's last payment covers; an unsubscribed reader's plan ends when it ends.
 _Avoid_: Billing cycle, term
 
 **Opt-out** (legacy):
-An older state where a reader stopped letters but kept paying. No longer possible; existing ones are cancelled at period end.
+An older state where a reader stopped letters but kept paying. No longer possible; existing ones are unsubscribed at period end.
 _Avoid_: Using it for new behaviour

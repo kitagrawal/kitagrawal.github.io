@@ -41,7 +41,7 @@
     <h2>1. Information collected</h2>
     <p>Depending on how you use the Site, we collect:</p>
     <ul>
-      <li><strong>Subscribers:</strong> your email address, your Stripe customer and subscription identifiers, your subscription status, renewal date and whether you have cancelled. Stripe also collects your name, billing country and card details at checkout.</li>
+      <li><strong>Subscribers:</strong> your email address, your Stripe customer and subscription identifiers, your subscription status, renewal date and whether you have unsubscribed. Stripe also collects your name, billing country and card details at checkout.</li>
       <li><strong>Consultations:</strong> your name, email address, the time you book and anything you write in the booking form.</li>
       <li><strong>Messages:</strong> the content and contact details of emails you send us.</li>
       <li><strong>Delivery data:</strong> whether a letter bounced or was reported as spam.</li>
@@ -50,10 +50,10 @@
     <p>We do not use analytics, advertising cookies or tracking pixels, and we do not track whether you open letters or click links.</p>
 
     <h2>2. Payment processing</h2>
-    <p>Stripe processes all payments and collects card and billing information directly. Card numbers never reach the Site or our systems. We receive subscription events from Stripe through a signed webhook and keep only the subscriber data listed above. Our only Stripe key is restricted to subscriptions: the cancel page uses it to set a plan to end at the end of the paid period when you confirm. It has no access to card numbers or other payment data. The cancel page sends our server only the Stripe customer id from your Cancel link; you type nothing and it sets no cookies. See <a href="https://stripe.com/privacy" target="_blank" rel="noopener">Stripe's privacy policy</a>.</p>
+    <p>Stripe processes all payments and collects card and billing information directly. Card numbers never reach the Site or our systems. We receive subscription events from Stripe through a signed webhook and keep only the subscriber data listed above. Our only Stripe key is restricted to subscriptions: the unsubscribe page uses it to set a plan to end at the end of the paid period when you confirm. It has no access to card numbers or other payment data. The unsubscribe page sends our server only the Stripe customer id from your Unsubscribe link; you type nothing and it sets no cookies. See <a href="https://stripe.com/privacy" target="_blank" rel="noopener">Stripe's privacy policy</a>.</p>
 
     <h2>3. Purposes and legal bases</h2>
-    <p>We use personal information to deliver the Newsletter, manage billing and cancellation, send messages about your purchase, provide consultations, answer enquiries, protect email delivery, prevent abuse and comply with law. Where applicable law requires a legal basis, we rely on performance of our contract with you, our legitimate interests (answering messages, protecting delivery and security), and legal obligations (tax and accounting records). We do not send promotional email; see <a href="consent.html">Email &amp; Cookie Consent</a>.</p>
+    <p>We use personal information to deliver the Newsletter, manage billing and unsubscribing, send messages about your purchase, provide consultations, answer enquiries, protect email delivery, prevent abuse and comply with law. Where applicable law requires a legal basis, we rely on performance of our contract with you, our legitimate interests (answering messages, protecting delivery and security), and legal obligations (tax and accounting records). We do not send promotional email; see <a href="consent.html">Email &amp; Cookie Consent</a>.</p>
 
     <h2>4. Service providers and transfers</h2>
     <p>We share only the information each provider needs:</p>
@@ -70,10 +70,10 @@
     <p>We keep subscriber records while your subscription is active. After it ends, we keep a record marked as inactive so that you are not emailed by mistake, and delete it when you ask or when your Stripe customer record is deleted. Stripe keeps payment and invoice records for as long as tax and accounting law requires. Booking details and messages are kept as long as needed to deliver the consultation or answer you, then deleted on request.</p>
 
     <h2>6. Security</h2>
-    <p>Subscriber data is stored with AWS and Stripe and encrypted in transit and at rest. Each Cancel link carries your Stripe customer id, which is hard to guess, and a cancellation only takes effect at the end of the period you have paid for. We keep the data we hold to the minimum, but no online system is completely secure.</p>
+    <p>Subscriber data is stored with AWS and Stripe and encrypted in transit and at rest. Each Unsubscribe link carries your Stripe customer id, which is hard to guess, and unsubscribing only takes effect at the end of the period you have paid for. We keep the data we hold to the minimum, but no online system is completely secure.</p>
 
     <h2>7. Your choices and rights</h2>
-    <p>You can end your plan, and so your letters, at any time with the Cancel link at the bottom of any letter; see <a href="terms.html#cancellation">Cancellation</a> in the Terms. To access, correct, delete or export your information, or to object to how we use it, email <a href="mailto:support@appliedailetter.com">support@appliedailetter.com</a> with the subject "Privacy Request". We may need to confirm that you own the email address before acting, and we may keep records that the law requires. We reply within 30 days.</p>
+    <p>You can end your plan, and so your letters, at any time with the Unsubscribe link at the bottom of any letter; see <a href="terms.html#cancellation">Unsubscribing</a> in the Terms. To access, correct, delete or export your information, or to object to how we use it, email <a href="mailto:support@appliedailetter.com">support@appliedailetter.com</a> with the subject "Privacy Request". We may need to confirm that you own the email address before acting, and we may keep records that the law requires. We reply within 30 days.</p>
 
     <h2>8. Cookies and analytics</h2>
     <p>The Site sets no cookies and uses no analytics. It saves one preference, your light or dark theme, in your browser's local storage. Stripe's checkout and the Cal.com booking window set their own cookies, which they need to work and to prevent fraud. See <a href="consent.html">Email &amp; Cookie Consent</a>.</p>

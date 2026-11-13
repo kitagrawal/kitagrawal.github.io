@@ -37,9 +37,9 @@ window.SITE_CONFIG = {
   newsletter: {
     price: "$7",   // text shown on the home page; "per month" is added there
     subscribeUrl: "https://buy.stripe.com/fZu8wP8pM7aU9LY8sB08g00",
-    // cancelApiUrl: the CancelPlan API route (newsletter/setup-cancel.sh prints it). The hidden
-    // unsubscribe.html page posts the c (Stripe customer id) from the letter's Cancel link here.
+    // cancelApiUrl: the CancelPlan API route (the newsletter stack's CancelApiUrl output). The hidden
+    // unsubscribe.html page posts the c (Stripe customer id) from the letter's Unsubscribe link here.
     // Leave "REPLACE" in it until the route is deployed; the page then tells readers to email support.
-    cancelApiUrl: "https://c7d3yimc7d.execute-api.us-east-2.amazonaws.com/cancel"
+    cancelApiUrl: "https://chdrysgnq8.execute-api.us-east-2.amazonaws.com/cancel"
   }
 };

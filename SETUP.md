@@ -19,17 +19,11 @@ Every Subscribe button (`data-subscribe`) goes to `newsletter.subscribeUrl`. Use
 
 Keep `newsletter.price` in `config.js` equal to the real price. While `subscribeUrl` contains `REPLACE`, the Subscribe buttons are greyed out.
 
-`unsubscribe.html` is the cancel page (it keeps its old file name so old letter links still work). Nothing on the site links to it and it is marked `noindex`; readers reach it only from the Cancel link at the bottom of a letter, which looks like `https://<your-site>/unsubscribe.html?c=<Stripe customer id>`. The reader presses one Confirm button and the page posts `{ c }` to the `CancelPlan` Lambda, which sets the plan to end at the end of the paid period. Letters continue until then and the reader is not charged again; Stripe's webhook brings the change into the table. The id alone is the proof (`docs/adr/0001-cancel-link-proof-is-customer-id.md`). The only Stripe key in AWS is a restricted one with only **Subscriptions: Write**; you get no email. Without `c` the page asks the reader to open the link from a letter. To turn it on:
-
-1. In Stripe create a restricted key (Developers → API keys → Create restricted key) with only **Subscriptions: Write**, and store it yourself in Secrets Manager (us-east-2) as `applied-ai-letter/stripe`, either the plain key or JSON holding it. Only an `rk_` key is used; a full `sk_` key is refused. If the key from the older portal flow is there, change its permission instead of adding another. Run `newsletter/setup-cancel.sh` (once); it prints the API URL.
-2. Put that URL into `newsletter.cancelApiUrl` in `config.js`. While it contains `REPLACE`, the page tells readers to email support.
-3. Test with a link from `newsletter/link.sh <cus_id> http://localhost:8000/unsubscribe.html` under `python3 -m http.server`.
+`unsubscribe.html` is the unsubscribe page. Nothing on the site links to it and it is marked `noindex`; readers reach it only from the Unsubscribe link at the bottom of a letter, `https://<your-site>/unsubscribe.html?c=<Stripe customer id>`. The reader presses one Confirm button and the page posts `{ c }` to `newsletter.cancelApiUrl` (the stack's `CancelApiUrl` output), which sets the plan to end at the end of the paid period. Letters continue until then; Stripe's webhook brings the change into the table. The id alone is the proof (`docs/adr/0001-cancel-link-proof-is-customer-id.md`). While `cancelApiUrl` contains `REPLACE`, the page tells readers to email support.
 
 Letters carry no `List-Unsubscribe` mail headers (`docs/adr/0002-no-list-unsubscribe-headers.md`). Do not list `unsubscribe.html` in `robots.txt`, which is public and would stop search engines seeing the `noindex`.
 
-To cancel a reader's plan yourself, use the Stripe Dashboard: cancel the subscription at the end of the period. `StripeSync` copies every change into DynamoDB from the webhook. Stripe is the source of truth for billing; never edit the table by hand.
-
-The Stripe webhook: in the Stripe Dashboard → Developers → Webhooks, add an endpoint at `StripeSync`'s URL (`.../stripe/sync`) with the events `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.updated` and `customer.deleted`. Store its signing secret yourself in SSM as `/newsletter/stripe-sync/webhook-secret` (SecureString). Subscribers from before the webhook existed appear in the table at their next renewal.
+To cancel a reader's plan yourself, use the Stripe Dashboard: cancel at the end of the period. Stripe is the source of truth for billing; the webhook and the daily reconcile copy it into DynamoDB, so never edit the table by hand. Backend setup (secrets, deploy, Stripe webhook, sending): `newsletter/api/README.md`.
 
 ## 3. Deploy on GitHub Pages
 

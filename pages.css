@@ -1,4 +1,4 @@
-/* Styles only for book.html, the legal pages (terms, privacy, consent, contact), unsubscribe.html (the cancel page) and 404.html.
+/* Styles only for book.html, the legal pages (terms, privacy, consent, contact), unsubscribe.html and 404.html.
    Load after base.css, which holds tokens, header, buttons, offers, price and footer. */
 
 /* ---------- page frame: footer sticks to the bottom ---------- */
@@ -22,7 +22,7 @@ section.block{padding:40px 0 72px}
 .steps h3{font-size:17px}
 .steps p{color:var(--muted);font-size:15px}
 
-/* ---------- unsubscribe.html (the cancel page) ---------- */
+/* ---------- unsubscribe.html ---------- */
 /* data-state: ready (Confirm on) | locked (Confirm off, .unsub-note says why) | done | support. */
 .unsub{padding:112px 0 80px}
 .unsub .wrap{max-width:calc(640px + 48px)}
