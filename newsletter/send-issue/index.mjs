@@ -35,6 +35,7 @@ const NOT_SENT = new Set([
 // Several failures in a row point at an account-wide problem (identity, DKIM, account): stop the run so it
 // does not claim the whole list. SendIncomplete alarms; see PLAN.md for clearing the failed claims.
 const MAX_FAILURES_IN_A_ROW = 5;
+const THROTTLED = new Set(["TooManyRequestsException", "LimitExceededException", "ThrottlingException"]);
 
 const env = () => {
   const e = Object.fromEntries(["SENDS_TABLE", "AUTHOR_EMAIL", "REPLY_TO", "FROM", "CONFIG_SET", "CANCEL_PAGE"].map((k) => [k, process.env[k]]));
@@ -125,7 +126,8 @@ async function publish(cfg, bucket, key, context) {
       id = (await send(cfg, r.email, mail)).MessageId;
     } catch (e) {
       stats.failed++;
-      failuresInARow++;
+      // Throttling is the rate, not the account: it does not count toward the stop (the claim is removed anyway).
+      if (!THROTTLED.has(e.name)) failuresInARow++;
       console.error(JSON.stringify({ issueId, customerId: r.customerId, error: e.name, message: e.message }));
       try {
         if (NOT_SENT.has(e.name)) await db.send(new DeleteCommand({ TableName: cfg.SENDS_TABLE, Key })); // a re-upload retries this reader
