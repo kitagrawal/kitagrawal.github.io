@@ -189,29 +189,38 @@ export function sendPlan(objectKey, rows, productionAccess) {
 
 // Which reader email (if any) a row change makes due. StripeSync calls it after saveRow writes, with the
 // row before (or undefined) and after the write. Returns { kind, claim } or null:
-//   welcome            claim welcomed_at     the write makes the plan live with an email (the row before was not
-//                                            already live with one), no opt-out, no welcome yet
-//   cancel-scheduled   claim cancel_noted_at a cancel is scheduled on a live plan and not yet noted; needs
-//                      current_period_end for the "letters continue until" date. applyEvent clears
-//                      cancel_noted_at when the cancel is resumed, so cancel, resume, cancel notes twice
+//   welcome            claim welcomed_at     the write makes a plan live with an email, no opt-out, no welcome yet,
+//                                            and it is a new reader or plan: there was no row before, or the
+//                                            subscription id changed, or the row before had no email. A pause then
+//                                            resume, or past_due then active, on the same subscription with the
+//                                            email already on file gives none
+//   cancel-scheduled   claim cancel_noted_at the write is the transition that schedules a cancel: the row before
+//                                            had none scheduled, the plan is live, the note is not yet claimed;
+//                                            needs current_period_end for the "letters continue until" date.
+//                                            applyEvent clears cancel_noted_at when the cancel is resumed, so
+//                                            cancel, resume, cancel notes twice. A cancel scheduled before this
+//                                            code was deployed gets no note
 //   goodbye            claim goodbye_at      the plan ended, no goodbye yet, and the reader was welcomed or the
-//                      write is the one that ended a live plan (a row that never went live gets none)
+//                      write is the one that ended a live plan (a row that never went live gets none). Never for a
+//                      reader with the legacy email_opt_out flag (before or after the write)
 // One email per event: welcome wins over cancel-scheduled. null in the SES sandbox (nothing is claimed, so
-// a welcome skipped in the sandbox is lost; cancel-scheduled and goodbye still go out on a later event) or when there is no email on file.
+// a welcome or cancel note skipped in the sandbox is lost; a goodbye still goes out on a later event) or when
+// there is no email on file. Readers who were live before reader emails existed get nothing without a backfill.
 // The claim is a field on the row: StripeSync sets it with a conditional write before sending, so each
 // email is sent at most once.
 export function readerEmail(oldRow, newRow, productionAccess) {
   if (productionAccess !== true || !newRow?.email) return null;
+  const optedOut = newRow.email_opt_out === true || oldRow?.email_opt_out === true;
   const live = newRow.sub_live === true && newRow.email_opt_out !== true;
-  // Welcome only on the change that makes the plan live with an email: the row before was not already live
-  // with an email, so readers who were live before reader emails existed never get one, and both event orders
-  // (subscription first, or the checkout email first) give exactly one.
-  const alreadyLive = oldRow?.sub_live === true && Boolean(oldRow.email_lc);
-  if (live && !alreadyLive && !newRow.welcomed_at) return { kind: "welcome", claim: "welcomed_at" };
-  if (live && newRow.cancel_at_period_end === true && !newRow.cancel_noted_at && Number.isFinite(newRow.current_period_end)) {
+  // Both event orders give exactly one welcome: subscription first (the row before had no email) or the
+  // checkout email first (the row before had no subscription id).
+  const newReaderOrPlan = !oldRow || oldRow.subscription_id !== newRow.subscription_id || !oldRow.email_lc;
+  if (live && newReaderOrPlan && !newRow.welcomed_at) return { kind: "welcome", claim: "welcomed_at" };
+  if (live && oldRow && oldRow.cancel_at_period_end !== true && newRow.cancel_at_period_end === true &&
+      !newRow.cancel_noted_at && Number.isFinite(newRow.current_period_end)) {
     return { kind: "cancel-scheduled", claim: "cancel_noted_at" };
   }
-  if (isEnded(newRow.status) && !newRow.goodbye_at && (newRow.welcomed_at || LIVE(oldRow?.status))) {
+  if (!optedOut && isEnded(newRow.status) && !newRow.goodbye_at && (newRow.welcomed_at || LIVE(oldRow?.status))) {
     return { kind: "goodbye", claim: "goodbye_at" };
   }
   return null;

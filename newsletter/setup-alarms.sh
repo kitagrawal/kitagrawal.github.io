@@ -18,6 +18,8 @@
 #   - Newsletter/RefusedSend above 0 (a real send was refused, in practice because SES is still in the
 #     sandbox) and Newsletter/ReaderEmailFailed above 0 (a reader email failed); both are custom metrics that
 #     SendIssue and StripeSync write through countMetric in lib.mjs
+#   - Newsletter/SendIncomplete above 0 (a real send had failed readers or stopped early for time; SendIssue
+#     logs which, and a re-upload of the same issues/ file retries the readers whose claim was removed)
 # Every alarm notifies the topic only when it goes into ALARM. Missing data counts as not breaching.
 set -euo pipefail
 export AWS_PROFILE=newsletter AWS_REGION=us-east-2
@@ -69,6 +71,8 @@ alarm newsletter-refused-send "A real send was refused: SES is probably still in
   --namespace Newsletter --metric-name RefusedSend --statistic Sum --period 300 --threshold 0
 alarm newsletter-reader-email-failed "A reader email (welcome, cancel note or goodbye) failed to send; follow up by hand" \
   --namespace Newsletter --metric-name ReaderEmailFailed --statistic Sum --period 300 --threshold 0
+alarm newsletter-send-incomplete "A send finished with failed readers or stopped early (see the SendIssue logs; re-upload the issue to retry)" \
+  --namespace Newsletter --metric-name SendIncomplete --statistic Sum --period 300 --threshold 0
 
 echo
 echo "Next:"

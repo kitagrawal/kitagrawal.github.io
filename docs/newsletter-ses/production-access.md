@@ -8,7 +8,7 @@ AWS usually answers within about 96 hours (see `PLAN.md`, "Facts from the docs")
 
 | Field | Value |
 |---|---|
-| Mail type | Transactional (the paid letter and its account emails). Choose Marketing only if the form insists: readers opted in by paying. |
+| Mail type | Marketing (the paid letter is a newsletter; its account emails are sent alongside it). Readers opted in by paying. |
 | Website URL | https://kitagrawal.github.io |
 | Sending domain | appliedailetter.com (verified, Easy DKIM, MAIL FROM `bounce.appliedailetter.com`) |
 | Additional contact address | REPLACE-author-email |
@@ -46,7 +46,7 @@ CLI (changes live AWS; the author runs it, profile `newsletter`). Save the text 
 export AWS_PROFILE=newsletter AWS_REGION=us-east-2
 aws sesv2 put-account-details \
   --production-access-enabled \
-  --mail-type TRANSACTIONAL \
+  --mail-type MARKETING \
   --website-url https://kitagrawal.github.io \
   --use-case-description file:///tmp/use-case.txt \
   --additional-contact-email-addresses REPLACE-author-email \

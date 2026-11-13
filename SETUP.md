@@ -29,7 +29,7 @@ The letter, in Markdown.
 1. Upload it to `drafts/<date>-<slug>.md`. That sends one **Proof** to the author's address: the same email readers will get, with a sample Cancel link.
 2. When the Proof looks right, upload the same file to `issues/<date>-<slug>.md`. That sends the **letter** to every reader whose plan is live, once per email address, each with their own Cancel link.
 
-Re-uploading a file never sends a reader the same letter twice. If a run stops part way, upload the file again to reach the readers it missed. While SES is still in the sandbox, an `issues/` upload is refused and you get an alert; only Proofs go out.
+Publish each letter once under one `issues/` name: the file name is the letter's id, so a second name sends it again. Re-uploading the same file never sends a reader the same letter twice. If a run stops part way, upload the file again to reach the readers it missed. While SES is still in the sandbox, an `issues/` upload is refused and you get an alert; only Proofs go out.
 
 ### Set up sending (once)
 
@@ -40,11 +40,11 @@ The scripts change live AWS, so you run them yourself, in this order. Each is sa
 3. In SES (us-east-2), verify your author address as an email identity. In the sandbox SES sends only to verified addresses.
 4. `AUTHOR_EMAIL=you@example.com newsletter/setup-send.sh`. Replies to a letter go to `REPLY_TO` (default `support@appliedailetter.com`).
 5. `newsletter/deploy.sh`.
-6. `ALERT_EMAIL=you@example.com newsletter/setup-alarms.sh`, then confirm the SNS email. It alerts you when the bounce rate passes 2%, the complaint rate passes 0.05%, a Lambda errors, a real send is refused or a reader email fails.
+6. `ALERT_EMAIL=you@example.com newsletter/setup-alarms.sh`, then confirm the SNS email. It alerts you when the bounce rate passes 2%, the complaint rate passes 0.05%, a Lambda errors, a real send is refused, a send ends with failed readers or stops early, or a reader email fails.
 7. Upload a draft and check the Proof.
 8. Submit the production-access request from `docs/newsletter-ses/production-access.md` (fill in its `REPLACE` values). AWS answers in about 96 hours. Only after that can an `issues/` upload reach readers.
 
-Each script refuses an address that contains `REPLACE`. Readers also get three **reader emails**, each at most once: a welcome when the plan goes live, a note when a Cancel is scheduled, and a goodbye when the plan ends. Their wording is in `newsletter/emails/*.md`; edit it, run the tests, then `newsletter/deploy.sh`. They are skipped while SES is in the sandbox.
+Each script refuses an address that contains `REPLACE`. Readers also get three **reader emails**, each at most once: a welcome when a new reader's plan goes live, a note when a Cancel is scheduled, and a goodbye when the plan ends. Their wording is in `newsletter/emails/*.md`; edit it, run the tests, then `newsletter/deploy.sh`. They are skipped while SES is in the sandbox.
 
 ### Cancel
 

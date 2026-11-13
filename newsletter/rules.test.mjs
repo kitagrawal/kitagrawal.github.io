@@ -358,7 +358,8 @@ test("readerEmail: exactly one welcome in either event order, and none after the
     assert.equal(dues.filter((d) => d === "welcome").length, 1, JSON.stringify(dues));
   }
   assert.equal(readerEmail(live({ email_lc: "a@x.com" }), live({ email_lc: "a@x.com" }), true), null);
-  assert.equal(readerEmail(live({ email_lc: "a@x.com", sub_live: false }), live({ email_lc: "a@x.com" }), true).kind, "welcome");
+  assert.equal(readerEmail(live({ email_lc: "a@x.com", sub_live: false }), live({ email_lc: "a@x.com" }), true), null); // same plan resumed
+  assert.equal(readerEmail(live({ email_lc: "a@x.com", subscription_id: "sub_1" }), live({ email_lc: "a@x.com", subscription_id: "sub_2" }), true).kind, "welcome"); // a new plan
   assert.equal(readerEmail(live({ email_lc: undefined }), live({ email_lc: "a@x.com" }), true).kind, "welcome");
 });
 
@@ -372,8 +373,35 @@ test("readerEmail: no welcome for a row that starts ended; no goodbye either", (
 test("readerEmail: cancel-scheduled on the event that schedules the cancel, once", () => {
   const { dues } = run(checkout(), subEv({}, 1100, "customer.subscription.created"), subEv({ cancel_at_period_end: true }, 1200), subEv({ cancel_at_period_end: true }, 1300));
   assert.deepEqual(dues, [null, "welcome", "cancel-scheduled", null]);
-  assert.deepEqual(readerEmail(undefined, live({ welcomed_at: "t", cancel_at_period_end: true, current_period_end: 999 }), true),
+  assert.deepEqual(readerEmail(live({ welcomed_at: "t" }), live({ welcomed_at: "t", cancel_at_period_end: true, current_period_end: 999 }), true),
     { kind: "cancel-scheduled", claim: "cancel_noted_at" });
+});
+
+test("readerEmail: a paused then resumed plan, or past_due then active, on the same subscription gets no welcome", () => {
+  const { row, dues } = run(checkout(), subEv({}, 1100, "customer.subscription.created"));
+  assert.deepEqual(dues, [null, "welcome"]);
+  const paused = step(row, subEv({ pause_collection: { behavior: "void" } }, 1200));
+  assert.equal(paused.row.sub_live, false);
+  const resumed = step({ ...paused.row, welcomed_at: undefined }, subEv({}, 1300)); // even with no welcome claimed
+  assert.equal(resumed.due, null);
+  const pastDue = step(play(checkout(), subEv({ status: "past_due" }, 1100, "customer.subscription.created")), subEv({ status: "active" }, 1200));
+  assert.equal(pastDue.due, null);
+});
+
+test("readerEmail: a reader live before reader emails (no welcome claimed) gets nothing on unrelated events", () => {
+  const existing = play(checkout(), subEv({}, 1100, "customer.subscription.created"));
+  const paused = play(checkout(), subEv({ pause_collection: { behavior: "void" } }, 1100, "customer.subscription.created"));
+  assert.equal(step(paused, subEv({}, 1200)).due, null);
+  assert.equal(step(existing, subEv({ status: "past_due" }, 1200)).due, null);
+});
+
+test("readerEmail: a cancel scheduled before deploy gets no note on an unrelated update; a new cancel after a resume does", () => {
+  const pre = play(checkout(), subEv({ cancel_at_period_end: true }, 1100, "customer.subscription.created")); // no claims
+  assert.equal(step(pre, subEv({ cancel_at_period_end: true }, 1200)).due, null);
+  assert.equal(step(pre, ev("customer.updated", { id: "cus_1", email: "n@x.com" }, 1200)).due, null);
+  assert.equal(readerEmail(undefined, live({ welcomed_at: "t", cancel_at_period_end: true, current_period_end: 999 }), true), null); // no row before
+  const resumed = step(pre, subEv({ cancel_at_period_end: false }, 1300));
+  assert.equal(step(resumed.row, subEv({ cancel_at_period_end: true }, 1400)).due?.kind, "cancel-scheduled");
 });
 
 test("readerEmail: cancel, resume, cancel again notes twice; a repeated cancel event notes once", () => {
@@ -391,17 +419,19 @@ test("readerEmail: a cancel_at date counts as a scheduled cancel", () => {
   assert.deepEqual(dues, [null, "welcome", "cancel-scheduled"]);
 });
 
-test("readerEmail: welcome wins when welcome and cancel-scheduled are both due; the note follows on the next event", () => {
+test("readerEmail: welcome wins when welcome and a scheduled cancel arrive together; no note follows (not a transition)", () => {
   const { dues } = run(checkout(), subEv({ cancel_at_period_end: true }, 1100, "customer.subscription.created"), subEv({ cancel_at_period_end: true }, 1200));
-  assert.deepEqual(dues, [null, "welcome", "cancel-scheduled"]);
+  assert.deepEqual(dues, [null, "welcome", null]);
 });
 
 test("readerEmail: cancel-scheduled needs the paid period's end for the date, and a live plan", () => {
+  const before = live({ welcomed_at: "t" });
   const row = live({ welcomed_at: "t", cancel_at_period_end: true });
-  assert.equal(readerEmail(undefined, row, true), null);
-  assert.equal(readerEmail(undefined, { ...row, current_period_end: null }, true), null);
-  assert.equal(readerEmail(undefined, { ...row, current_period_end: 9, sub_live: false }, true), null);
-  assert.equal(readerEmail(undefined, { ...row, current_period_end: 9, cancel_noted_at: "t" }, true), null);
+  assert.equal(readerEmail(before, row, true), null);
+  assert.equal(readerEmail(before, { ...row, current_period_end: null }, true), null);
+  assert.equal(readerEmail(before, { ...row, current_period_end: 9, sub_live: false }, true), null);
+  assert.equal(readerEmail(before, { ...row, current_period_end: 9, cancel_noted_at: "t" }, true), null);
+  assert.equal(readerEmail(before, { ...row, current_period_end: 9 }, true).kind, "cancel-scheduled");
 });
 
 test("readerEmail: goodbye once when a welcomed plan ends", () => {
@@ -422,6 +452,12 @@ test("readerEmail: goodbye for a plan that ends without a cancel note, and for o
   assert.equal(readerEmail(live(), live({ sub_live: false, status: "canceled", email: undefined }), true), null);
   assert.equal(readerEmail(live(), live({ sub_live: false, status: "canceled" }), false), null);
   assert.equal(readerEmail(live({ status: "incomplete" }), live({ sub_live: false, status: "canceled" }), true), null); // never went live
+});
+
+test("readerEmail: no goodbye for a reader with the legacy opt-out flag, before or after the write", () => {
+  assert.equal(readerEmail(live(), live({ sub_live: false, status: "canceled", email_opt_out: true }), true), null);
+  assert.equal(readerEmail(live({ email_opt_out: true }), live({ sub_live: false, status: "canceled" }), true), null);
+  assert.equal(readerEmail(live({ welcomed_at: "t" }), live({ welcomed_at: "t", sub_live: false, status: "canceled", email_opt_out: true }), true), null);
 });
 
 test("readerEmail: a new plan after an ended one gets a welcome and, in time, a goodbye again", () => {

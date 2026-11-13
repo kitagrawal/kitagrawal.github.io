@@ -32,6 +32,7 @@ async function productionAccess() {
     return access.value;
   } catch (e) {
     console.error(JSON.stringify({ readerEmail: "GetAccount failed, treated as no production access", error: e.name, message: e.message }));
+    await countMetric("ReaderEmailFailed");
     return false;
   }
 }

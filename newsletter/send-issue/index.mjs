@@ -6,9 +6,12 @@
 //                     in the sandbox
 // Before each SES send it claims (issue_id, email_lc) in the sends table with a conditional put, so a
 // re-upload or a crashed run never sends a reader the same letter twice; a reader whose SES call
-// fails has the claim removed, so a re-upload retries just that reader. A crash between the claim
-// and the SES call leaves a claim with no message id: that reader is skipped on re-upload (at most
-// once, never twice). No List-Unsubscribe headers (docs/adr/0002).
+// fails with a known not-sent error (NOT_SENT below) has the claim removed, so a re-upload retries just
+// that reader; any other failure (a timeout, a network error, MessageRejected, an unknown one) keeps the
+// claim, because the letter may already be out, and records the error on the claim. A crash between the
+// claim and the SES call leaves a claim with no message id: that reader is skipped on re-upload (at most
+// once, never twice). A send that ends with failures or stops early for time counts the SendIncomplete
+// metric (alarm newsletter-send-incomplete). No List-Unsubscribe headers (docs/adr/0002).
 // Env: TABLE_NAME (subscribers), SENDS_TABLE, AUTHOR_EMAIL, REPLY_TO, FROM, CONFIG_SET, CANCEL_PAGE.
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { SESv2Client, SendEmailCommand, GetAccountCommand } from "@aws-sdk/client-sesv2";
@@ -20,6 +23,14 @@ const s3 = new S3Client();
 const ses = new SESv2Client();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const SAFETY_MS = 20000; // stop sending this long before the timeout; a re-upload resumes
+
+// Errors SES returns before it accepts a message: nothing was sent, so the claim is removed and a re-upload
+// retries the reader. Anything else (timeout, network error, MessageRejected, unknown) may have been sent, so
+// the claim stays: a reader skipped by mistake is better than a letter sent twice.
+const NOT_SENT = new Set([
+  "TooManyRequestsException", "LimitExceededException", "ThrottlingException", "SendingPausedException",
+  "MailFromDomainNotVerifiedException", "NotFoundException", "BadRequestException", "AccessDeniedException",
+]);
 
 const env = () => {
   const e = Object.fromEntries(["SENDS_TABLE", "AUTHOR_EMAIL", "REPLY_TO", "FROM", "CONFIG_SET", "CANCEL_PAGE"].map((k) => [k, process.env[k]]));
@@ -64,7 +75,7 @@ async function readers() {
 
 async function publish(cfg, bucket, key, context) {
   const first = sendPlan(key, [], false); // routes the key; proofs and ignored keys need no account or table read
-  if (first.mode === "ignore") return console.log(JSON.stringify({ key, mode: "ignore" }));
+  if (first.mode === "ignore") return console.warn(JSON.stringify({ key, mode: "ignore", note: "key is not drafts/<name>.md or issues/<name>.md" }));
 
   const obj = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
   const letter = parseLetter(await obj.Body.transformToString("utf8")); // throws without a subject: nothing is sent
@@ -110,7 +121,20 @@ async function publish(cfg, bucket, key, context) {
     } catch (e) {
       stats.failed++;
       console.error(JSON.stringify({ issueId, customerId: r.customerId, error: e.name, message: e.message }));
-      await db.send(new DeleteCommand({ TableName: cfg.SENDS_TABLE, Key })); // a re-upload retries this reader
+      try {
+        if (NOT_SENT.has(e.name)) await db.send(new DeleteCommand({ TableName: cfg.SENDS_TABLE, Key })); // a re-upload retries this reader
+        else {
+          await db.send(new UpdateCommand({
+            TableName: cfg.SENDS_TABLE, Key,
+            UpdateExpression: "SET #e = :e",
+            ExpressionAttributeNames: { "#e": "error" },
+            ExpressionAttributeValues: { ":e": `${e.name}: ${e.message}`.slice(0, 500) },
+          }));
+          console.error(JSON.stringify({ issueId, customerId: r.customerId, claimKept: true, note: "the letter may have been sent; a re-upload skips this reader" }));
+        }
+      } catch (e2) {
+        console.error(JSON.stringify({ issueId, customerId: r.customerId, error: "could not update the claim", message: e2.message }));
+      }
       continue;
     }
     stats.sent++;
@@ -125,6 +149,10 @@ async function publish(cfg, bucket, key, context) {
     }
   }
   console.log(JSON.stringify({ key, mode: "send", issueId, recipients: plan.recipients.length, ...stats }));
+  if (stats.failed > 0 || stats.stopped) {
+    console.error(JSON.stringify({ key, issueId, error: "send incomplete", failed: stats.failed, stopped: stats.stopped, note: "re-upload retries readers whose claim was removed" }));
+    await countMetric("SendIncomplete");
+  }
 }
 
 export const handler = async (event, context) => {

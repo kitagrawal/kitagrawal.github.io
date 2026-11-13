@@ -12,9 +12,10 @@
 # Creates or updates:
 #   - the DynamoDB table newsletter-sends, key (issue_id, email_lc), on-demand: one row per letter sent to a reader
 #   - the role send-issue-role, least privilege: read drafts/* and issues/* in the bucket, scan the subscribers
-#     table, write the sends table, send from the SES identity and configuration set, read the SES account,
+#     table, write the sends table, send from the SES identity and configuration set (and to the AUTHOR_EMAIL
+#     identity, which the sandbox checks for proofs), read the SES account,
 #     put metrics in the Newsletter namespace, write logs
-#   - the function SendIssue (900 s, 256 MB) with the code from this folder
+#   - the function SendIssue (900 s, 256 MB) with the code from this folder, reserved concurrency 1 (one run at a time)
 #   - the bucket's public access block (all four on), the S3 permission to invoke SendIssue, and the bucket
 #     notification for ObjectCreated on drafts/*.md and issues/*.md
 #   - StripeSync's reader emails (section 7, last): an extra role policy "reader-emails" on StripeSync's role
@@ -88,6 +89,8 @@ if ! aws iam get-role --role-name "$ROLE" >/dev/null 2>&1; then
   sleep 10 # let the new role propagate before Lambda uses it
 fi
 ROLE_ARN=$(aws iam get-role --role-name "$ROLE" --query Role.Arn --output text)
+# ses:SendEmail is allowed on the AUTHOR_EMAIL identity too: in the sandbox SES checks the recipient's
+# identity as well as the sender's, so a proof to the author fails without it.
 aws iam put-role-policy --role-name "$ROLE" --policy-name send-issue-access --policy-document "{
   \"Version\": \"2012-10-17\",
   \"Statement\": [
@@ -96,7 +99,7 @@ aws iam put-role-policy --role-name "$ROLE" --policy-name send-issue-access --po
     {\"Effect\": \"Allow\", \"Action\": \"dynamodb:Scan\", \"Resource\": \"$TABLE_ARN\"},
     {\"Effect\": \"Allow\", \"Action\": [\"dynamodb:PutItem\", \"dynamodb:UpdateItem\", \"dynamodb:DeleteItem\"], \"Resource\": \"$SENDS_ARN\"},
     {\"Effect\": \"Allow\", \"Action\": \"ses:SendEmail\",
-     \"Resource\": [\"arn:aws:ses:$AWS_REGION:$ACCOUNT:identity/$DOMAIN\", \"arn:aws:ses:$AWS_REGION:$ACCOUNT:configuration-set/$CONFIG_SET\"]},
+     \"Resource\": [\"arn:aws:ses:$AWS_REGION:$ACCOUNT:identity/$DOMAIN\", \"arn:aws:ses:$AWS_REGION:$ACCOUNT:identity/$AUTHOR_EMAIL\", \"arn:aws:ses:$AWS_REGION:$ACCOUNT:configuration-set/$CONFIG_SET\"]},
     {\"Effect\": \"Allow\", \"Action\": \"ses:GetAccount\", \"Resource\": \"*\"},
     {\"Effect\": \"Allow\", \"Action\": \"cloudwatch:PutMetricData\", \"Resource\": \"*\",
      \"Condition\": {\"StringEquals\": {\"cloudwatch:namespace\": \"Newsletter\"}}}
@@ -123,6 +126,9 @@ else
   rm -r "$tmp"
 fi
 aws lambda wait function-updated-v2 --function-name "$FN"
+# One run at a time: S3 can deliver an upload twice or two uploads at once, and two runs would race over the
+# same readers (the claims keep a letter from going twice, but the runs would also share the SES send rate).
+aws lambda put-function-concurrency --function-name "$FN" --reserved-concurrent-executions 1 >/dev/null
 FN_ARN=$(aws lambda get-function --function-name "$FN" --query Configuration.FunctionArn --output text)
 echo "$FN: ready (author $AUTHOR_EMAIL, replies to $REPLY_TO)"
 
