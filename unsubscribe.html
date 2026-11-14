@@ -15,11 +15,7 @@
 <link rel="stylesheet" href="pages.css">
 </head>
 <body>
-<!-- Hidden page: nothing links here. The Cancel link at the bottom of every letter opens it as
-     unsubscribe.html?c=<Stripe customer id> (an old link's &t= is ignored). One Confirm button posts
-     { c } to cfg.newsletter.cancelApiUrl (API Gateway, POST /cancel, CancelPlan), which sets the plan to
-     end at the end of the paid period and answers { done, until } or { error: "support" }. StripeSync's
-     webhook records the change. States: locked (no link or no API), ready, done, support. -->
+<!-- Hidden page: reached only from the Cancel link in each letter. -->
 <header>
   <div class="wrap">
     <nav>
