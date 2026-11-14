@@ -7,11 +7,17 @@ Static portfolio site, hosted on GitHub Pages. No build step or dependencies.
 | File | Purpose |
 |------|---------|
 | `index.html` | The home page markup. Styles are in `index.css`, behaviour in `home.js` |
-| `photo.jpg` | **You add this**: your portrait (about 1200x1500 px, under 300 KB) |
-| `favicon.svg` | Browser tab icon (edit the initials) |
+| `monogram-light.svg`, `monogram-dark.svg` | Standalone outlined Newsreader K. mark, also used in the hero |
+| `favicon.svg` | Browser tab icon: the K. mark with the cobalt square |
+| `logo-light.svg`, `logo-dark.svg` | Header logo (byline lockup: ANKIT “KIT” AGRAWAL over THE APPLIED AI LETTER), one per theme |
+| `logo-compact-light.svg`, `logo-compact-dark.svg` | Header logo below 680 px wide: the name over THE APPLIED AI LETTER scaled to the name's full width, with no rules, so the tagline stays readable on phones |
+| `logo-name-light.svg`, `logo-name-dark.svg` | Name-only logo used in the footer |
+| `og-image.png`, `apple-touch-icon.png` | Social share card (1200×630) and iOS home-screen icon (180×180); rebuild both with `tools/og-image/build.sh` |
+| `tools/og-image/` | `og.html` and `icon.html` are the sources; `build.sh` renders them with headless Chrome |
+| `tools/header-logos/` | `build.py` regenerates the six `logo-*.svg` files from `source/logo-light.svg` |
 | `404.html` | Custom "page not found" page (shares `base.css` and `pages.css`; every URL is root-absolute because GitHub Pages serves it at any missing path) |
 | `book.html` | Consultation booking page (Cal.com popup) |
-| `terms.html`, `privacy.html`, `consent.html`, `contact.html` | Legal pages for the letter and consultations: Terms & Conditions, Privacy Policy, Email & Cookie Consent, Contact & Concerns (support@appliedailetter.com). Each footer links all four; other pages link Terms, Privacy and Contact. When one changes materially, update its effective date and email subscribers |
+| `terms.html`, `privacy.html`, `consent.html`, `contact.html` | Legal pages for the letter and consultations: Terms & Conditions, Privacy Policy, Email & Cookie Consent, Contact & Concerns (support@appliedailetter.com). Every page shares one footer (styled in `base.css`) whose Legal column links all four. When one changes materially, update its effective date and email subscribers |
 | `unsubscribe.html` | The cancel page (the file keeps its old name so old letter links work): reached only from the Cancel link at the bottom of each letter (`?c=<Stripe customer id>`; not linked from the site, marked `noindex`). One Confirm button posts the id to the `CancelPlan` Lambda, which sets the plan to end at the end of the paid period; letters continue until then |
 | `config.js` | **Edit this**: Cal.com link, newsletter subscribe URL and the cancel API URL (`cancelApiUrl`) |
 | `base.css` | Styles every page shares: colour tokens, header, buttons, consultation cards, price, rows, footer |
@@ -20,8 +26,13 @@ Static portfolio site, hosted on GitHub Pages. No build step or dependencies.
 | `theme-icon.svg` | Theme toggle icon (used as a CSS mask, so it follows the text colour) |
 | `SETUP.md` | Step-by-step Cal.com and newsletter setup |
 | `newsletter/` | AWS Lambdas for the paid newsletter (us-east-2, `newsletter` profile): `stripe-sync` (the one Stripe webhook; builds rows from the events and uses no Stripe key), `cancel-plan` (the `CancelPlan` Lambda behind `POST /cancel`; holds the one Stripe key, restricted to "Subscriptions: Write"), shared `lib.mjs` and `rules.mjs` (pure, tested with `node --test newsletter/*.test.mjs`), `deploy.sh` to push code changes to both Lambdas, one-off `setup-dynamodb.sh` and `setup-cancel.sh`, `link.sh` to print a test Cancel link, and one-off `cancel-opt-outs.sh` and `cancel-opt-outs.mjs` (dry run by default; `--confirm` schedules period-end cancels in live Stripe for legacy opt-outs who still pay). Not part of the site; see `docs/newsletter-ses/PLAN.md` |
-| `robots.txt` | Search engine rules |
+| `robots.txt` | Search engine rules; points to `sitemap.xml` |
+| `sitemap.xml` | Indexable pages (home, book, legal). Add a page here when you add one |
 | `.nojekyll` | Tells GitHub Pages to serve files as-is |
+
+## Brand system
+
+The shared semantic tokens in `base.css` use Deep Ink, Warm Ivory, Muted Slate, Soft Stone and Cobalt. Dark-mode text accents use a lighter blue for contrast; buttons and monogram punctuation retain Cobalt. Newsreader, Inter and IBM Plex Mono remain the font families. The header uses the full outlined lockup at 680 px and above and the compact lockup below, where the header becomes two rows: logo and theme toggle, then links with the Book and Subscribe pills. Navigation links wrap to a second row below 960 px. The existing system-theme preference and saved toggle choice are preserved.
 
 ## Bookings and newsletter
 
@@ -29,7 +40,7 @@ Follow **SETUP.md**. Until `config.js` is filled in, the pages show a "setup nee
 
 ## Before you publish
 
-- Add `photo.jpg` next to `index.html` (the "AA" initials show until it exists).
+- Check the full wordmark, K. monogram and theme toggle at desktop and mobile widths.
 - Fill the `REPLACE` placeholders in `config.js` (see `SETUP.md`).
 
 ## Going live with Cancel (owner steps)
