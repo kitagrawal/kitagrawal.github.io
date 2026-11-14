@@ -2,108 +2,128 @@
    offers, price and footer. Sections below follow the page top to bottom. */
 
 /* ---------- page frame ---------- */
-html{scroll-padding-top:87px}
-@media(max-width:600px){html{scroll-padding-top:66px}}
+html{scroll-padding-top:96px}
+@media(max-width:959px){html{scroll-padding-top:136px}}
+
+/* Half the space between two sections: each band pads top and bottom by this, so
+   sections sit about 42 px apart at 900 px and 29 px apart on phones. */
+:root{--section-gap:clamp(14px,1.2vw + 10px,22px)}
 
 /* ---------- section headings ---------- */
-.band{padding:72px 0}
-.heading{display:flex;flex-direction:column;gap:20px;margin-bottom:56px}
-.heading h2{text-wrap:balance;font-size:clamp(30px,3.8vw,48px);white-space:nowrap}
+/* Spacing and heading size scale with the viewport, with no jump at a breakpoint.
+   The heading size tracks the width the longest heading needs (about 18.9 × its
+   font size), so it stays on one line down to ~600 px and wraps, balanced, below. */
+.band{padding:var(--section-gap) 0}
+.heading{display:flex;flex-direction:column;gap:clamp(14px,.8vw + 11px,20px);margin-bottom:clamp(20px,1.2vw + 14px,28px)}
+.heading h2{text-wrap:balance;font-size:clamp(28px,5.2vw - 3px,48px)}
 .heading .sub{max-width:760px}
 h2{font-size:clamp(34px,4.6vw,52px);line-height:1.12}
 .sub{font-size:19px;line-height:1.6;color:var(--muted)}
 
 /* ---------- hero ---------- */
-.hero{padding:104px 0 64px}
-.hero-grid{display:grid;grid-template-columns:minmax(0,660px) 440px;justify-content:space-between;gap:56px;align-items:center}
+.hero{padding:32px 0 var(--section-gap)}
+.hero-grid{display:grid;grid-template-columns:minmax(0,660px) 440px;justify-content:space-between;gap:56px;align-items:start}
 .hero-copy{display:flex;flex-direction:column;align-items:flex-start;gap:28px}
-.hero h1{font-size:clamp(44px,6.2vw,80px);line-height:1.06;letter-spacing:-.02em}
-.hero .sub{max-width:600px}
-.photo{position:relative;width:440px;height:540px;border-radius:28px;overflow:hidden;background:var(--surface);border:1px solid var(--line);
-  display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:600;font-size:176px;line-height:1;letter-spacing:-.04em;color:var(--accent)}
-.photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.domains{display:flex;flex-wrap:wrap;align-items:baseline;gap:12px 44px;margin-top:56px;padding-top:28px;border-top:1px solid var(--line)}
+.hero h1{font-size:clamp(44px,5.4vw,72px);line-height:1.06;letter-spacing:-.02em}
+.hero .sub{max-width:600px;font-size:18px}
+.hero .mono{font-size:12px;letter-spacing:.055em}
+.hero .btns{margin-top:4px}
+/* Above 860 px the monogram box stretches to the copy's height (never shorter than 320 px),
+   so there is no empty band between the intro and "Where I have worked" at any width. */
+.photo{position:relative;width:440px;align-self:stretch;min-height:320px;border-radius:var(--radius);overflow:hidden;background:var(--surface);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center}
+
+.domains{display:flex;flex-wrap:wrap;align-items:baseline;gap:12px 44px;margin-top:32px;padding-top:24px;border-top:1px solid var(--line)}
 .domains ul{display:contents;list-style:none}
-.domains li{font-family:'Fraunces',serif;font-weight:600;font-size:22px;line-height:1.18}
-@media(max-width:1100px){.hero-grid{grid-template-columns:minmax(0,1fr) 360px}.photo{width:360px;height:442px;font-size:144px}}
+.domains li{font-family:var(--font-editorial);font-weight:600;font-size:22px;line-height:1.18}
+@media(max-width:1100px){.hero-grid{grid-template-columns:minmax(0,1fr) 360px}.photo{width:360px}}
 
 /* ---------- letter + consultations, side by side ----------
-   Subgrid lines up the label, heading, intro, price and body rows across both
+   Subgrid lines up the label, heading, intro, price, button and note rows across both
    panes, so the panes match in size. */
 .anchor{display:block;scroll-margin-top:48px}
-.duo{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(5,auto);column-gap:24px}
-.pane{grid-row:span 5;display:grid;grid-template-rows:subgrid;row-gap:20px;justify-items:start;align-items:start;
-  border-radius:var(--radius);padding:48px}
-.pane h2{font-size:clamp(32px,3.4vw,44px);line-height:1.12;text-wrap:balance}
-.pane .sub{font-size:17px}
-.pane.letter{background:var(--accent-soft)}
+/* The panes stay side by side down to 480 px; padding and type shrink with the viewport. */
+.duo{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(6,auto);column-gap:clamp(12px,1.6vw,24px)}
+.pane{grid-row:span 6;display:grid;grid-template-rows:subgrid;row-gap:clamp(14px,1.2vw + 8px,20px);justify-items:start;align-items:start;
+  border-radius:var(--radius);padding:clamp(16px,3.6vw,48px)}
+.pane h2{font-size:clamp(20px,3.4vw,44px);line-height:1.12;text-wrap:balance}
+.pane .price b{font-size:clamp(32px,3.6vw + 14px,56px)}
+.pane .price{gap:clamp(8px,1vw + 4px,14px)}
+.pane .btn{padding:clamp(12px,1vw + 8px,16px) clamp(12px,2vw,28px);font-size:clamp(14px,.4vw + 12px,16px)}
+.pane .sub{font-size:clamp(15px,.4vw + 13px,17px)}
+.pane.letter{background:var(--surface);border-top:3px solid var(--brand-accent);border-radius:0 0 var(--radius) var(--radius)}
 .pane.consult{background:var(--surface);border:1px solid var(--line)}
-.pane-body{align-self:stretch;justify-self:stretch;display:flex;flex-direction:column;align-items:flex-start;gap:20px}
-.pane-body>.btn{margin-top:auto}
+.pane-body{grid-row:span 2;align-self:stretch;justify-self:stretch;display:grid;grid-template-rows:subgrid;justify-items:start;row-gap:20px}
+.pane-body>.btn{align-self:stretch}
 .offer-info{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
 .offer-info p{color:var(--muted);font-size:15px;line-height:1.65}
 
 /* ---------- work ---------- */
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:32px;display:flex;flex-direction:column;gap:14px;transition:transform .2s,border-color .2s}
+/* As many columns as fit, with a minimum card width that grows with the viewport
+   (190 px on small screens, 300 px from 900 px): three columns from ~1000 px,
+   two down to ~450 px, one on phones. Padding and type shrink with the cards. */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,clamp(190px,40vw - 60px,300px)),1fr));gap:clamp(12px,1.6vw,24px)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:clamp(18px,2.4vw + 8px,32px);display:flex;flex-direction:column;gap:clamp(10px,.6vw + 8px,14px);transition:transform .2s,border-color .2s}
 .card:hover{transform:translateY(-4px);border-color:var(--accent)}
-.card .num{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:13px;line-height:1.5;color:var(--accent)}
-.card h3{font-size:26px;line-height:1.18}
+.card .num{font-family:var(--font-mono);font-weight:500;font-size:13px;line-height:1.5;color:var(--accent)}
+.card h3{font-size:clamp(20px,1.2vw + 14px,26px);line-height:1.18}
 .card p{color:var(--muted);font-size:15px}
-@media(max-width:1000px){.grid{grid-template-columns:repeat(2,1fr)}}
 
 /* ---------- venture ---------- */
-.venture{background:var(--surface);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:80px 0}
+.venture{background:var(--surface);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:40px 0}
 .venture-row{display:flex;align-items:center;justify-content:space-between;gap:40px}
 .venture-copy{display:flex;flex-direction:column;align-items:flex-start;gap:16px}
 .venture h2{font-size:clamp(30px,3.6vw,40px);line-height:1.14;max-width:760px}
 .venture p{color:var(--muted);max-width:680px}
 .venture .btn{flex:none}
-.badge{display:inline-flex;align-items:center;gap:10px;font-family:'JetBrains Mono',monospace;font-weight:500;font-size:12px;line-height:1.5;letter-spacing:.06em;text-transform:uppercase;
-  padding:6px 14px;border:1px solid var(--line);border-radius:999px;color:var(--muted);background:var(--bg)}
-.badge i{width:8px;height:8px;border-radius:50%;background:var(--warm);animation:pulse 1.8s infinite}
-@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--warm) 60%,transparent)}100%{box-shadow:0 0 0 10px transparent}}
+.badge{display:inline-flex;align-items:center;gap:10px;font-family:var(--font-mono);font-weight:500;font-size:12px;line-height:1.5;letter-spacing:.06em;text-transform:uppercase;
+  padding:6px 14px;border:1px solid var(--line);border-radius:4px;color:var(--muted);background:var(--bg)}
+.badge i{width:8px;height:8px;border-radius:50%;background:var(--brand-accent)}
 
-/* ---------- footer (extends base.css) ---------- */
-footer nav{padding:0;gap:28px;flex-wrap:wrap;justify-content:flex-start}
-footer a{text-decoration:none}
-footer a:hover{color:var(--ink)}
 
-/* ---------- scroll reveal (home.js adds .in) ---------- */
-.reveal{opacity:0;transform:translateY(18px);transition:opacity .6s,transform .6s}
-.reveal.in{opacity:1;transform:none}
+/* ---------- scroll reveal (home.js adds .in) ----------
+   Hidden only once the head script has marked the page .js, so the content still
+   shows when scripts fail or are blocked. */
+.js .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s cubic-bezier(.16,1,.3,1),transform .6s cubic-bezier(.16,1,.3,1)}
+.js .reveal.in{opacity:1;transform:none}
 
 /* ---------- responsive ---------- */
 @media(max-width:860px){
-  .band{padding:44px 0}
-  .heading{gap:20px;margin-bottom:24px}
-  .heading h2{white-space:normal;font-size:clamp(30px,6vw,40px)}
   .sub{font-size:18px;line-height:1.65}
-  .hero{padding:40px 0 48px}
-  .hero-grid{grid-template-columns:1fr;gap:24px}
-  .hero-copy{gap:24px}
+  .hero{padding:28px 0 var(--section-gap)}
+  /* Label and heading on the left, monogram on the right; the intro runs full width below. */
+  .hero-grid{grid-template-columns:minmax(0,1fr) clamp(96px,30vw,240px);gap:20px clamp(16px,4vw,32px)}
+  .hero-copy{display:contents}
+  .hero .mono,.hero h1{grid-column:1}
+  .hero .sub,.hero .btns{grid-column:1/-1}
   .hero .sub{font-size:18px;line-height:1.65}
-  .photo{width:100%;max-width:440px;height:auto;aspect-ratio:354/420;font-size:132px}
+  .photo{grid-column:2;grid-row:1/3;align-self:start;min-height:0;width:100%;height:auto;aspect-ratio:354/420}
   .domains{flex-direction:column;align-items:flex-start;gap:14px;margin-top:24px}
-  .domains ul{display:flex;flex-wrap:wrap;gap:10px 20px}
-  .domains li{font-size:17px;line-height:1.15}
-  .duo{grid-template-columns:1fr;grid-template-rows:none;gap:16px}
-  .pane{grid-row:auto;display:flex;flex-direction:column;align-items:flex-start;gap:16px;padding:28px 24px}
-  .grid{grid-template-columns:1fr;gap:16px}
-  .card{padding:24px}
-  .venture{padding:56px 0}
+  .domains ul{display:flex;flex-wrap:wrap;gap:10px 28px}
+  .venture{padding:32px 0}
   .venture-row{flex-direction:column;align-items:stretch;gap:16px}
-  footer .hide-sm{display:none}
+}
+@media(max-width:479px){
+  .duo{grid-template-columns:1fr;grid-template-rows:none;gap:16px}
+  .pane{grid-row:auto;display:flex;flex-direction:column;align-items:flex-start;gap:16px}
+  .pane h2{font-size:clamp(26px,7vw,30px)}
+  .pane .price b{font-size:clamp(40px,12vw,56px)}
+  .pane-body{display:flex;flex-direction:column;align-items:flex-start;gap:16px}
 }
 @media(max-width:600px){
+  .hero h1{font-size:clamp(30px,8.6vw,44px);line-height:1.1}
   .btns{flex-direction:column;align-self:stretch;gap:12px}
   .btn{width:100%}
 }
 
 /* ---------- reduced motion ---------- */
 @media(prefers-reduced-motion:reduce){
-  .badge i{animation:none}
-  .reveal{opacity:1;transform:none;transition:none}
+  .js .reveal{opacity:1;transform:none;transition:none}
   html{scroll-behavior:auto}
   .btn,.card{transition:none}
 }
+
+.photo .mark{width:62%;max-height:70%;aspect-ratio:160/140;background:url(monogram-light.svg) center/contain no-repeat}
+:root[data-theme="dark"] .photo .mark{background-image:url(monogram-dark.svg)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .photo .mark{background-image:url(monogram-dark.svg)}}
+.publication-masthead{font:600 clamp(12px,1.2vw + 6px,18px)/1.3 var(--font-editorial);letter-spacing:.12em;text-transform:uppercase;color:var(--ink);border-bottom:1px solid var(--line);padding-bottom:14px;width:100%}

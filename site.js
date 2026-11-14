@@ -47,7 +47,13 @@
   // Call again after adding such elements dynamically (book.html does this).
   let calLoaded = false;
   function initCal() {
-    if (!isSet(cal.bookLink)) return;
+    if (!isSet(cal.bookLink)) {
+      // Not set up yet: a Book button that opens nothing reads as broken, so say so.
+      document.querySelectorAll('[data-cal-book]').forEach(n => {
+        n.disabled = true; n.classList.add('disabled'); n.textContent = 'Coming soon';
+      });
+      return;
+    }
     const origin = /^https:\/\//i.test(cal.origin || '') ? cal.origin.replace(/\/$/, '') : 'https://app.cal.com';
     const nodes = document.querySelectorAll('[data-cal-book]');
     if (!nodes.length) return;
@@ -88,6 +94,7 @@
       const btnClass = featured ? 'btn primary' : 'btn';
       const card = el('article', { class: featured ? 'offer featured' : 'offer' });
       card.appendChild(el('span', { class: 'meta', text: [c.duration, c.price].filter(Boolean).join(' · ') }));
+      if (c.name) card.appendChild(el('h3', { text: c.name }));
       card.appendChild(el('p', { text: c.description || '' }));
       const actions = el('div', { class: 'actions' });
       actions.appendChild(ready

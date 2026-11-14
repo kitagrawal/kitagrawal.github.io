@@ -7,8 +7,12 @@ main{flex:1}
 .links a[aria-current="page"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
 .btns{margin-top:28px}
 
+/* Gap between the header and each page's heading: one value for every secondary page,
+   scaling from 32 px on phones to 56 px on wide screens with no jump at a breakpoint. */
+:root{--page-top:clamp(32px,2.4vw + 20px,56px)}
+
 /* ---------- page hero ---------- */
-.page-hero{padding:104px 0 40px}
+.page-hero{padding:var(--page-top) 0 40px}
 .page-hero h1{font-size:clamp(40px,6vw,64px);line-height:1.08;letter-spacing:-.015em;max-width:860px;margin:14px 0 18px}
 .lead{font-size:18px;line-height:1.65;color:var(--muted);max-width:600px}
 section.block{padding:40px 0 72px}
@@ -18,13 +22,13 @@ section.block{padding:40px 0 72px}
 .how{font-size:26px;margin:56px 0 18px}
 .steps{counter-reset:s;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px}
 .steps div{border-left:2px solid var(--accent);padding-left:18px;display:flex;flex-direction:column;gap:6px}
-.steps div::before{counter-increment:s;content:"0" counter(s);font-family:'JetBrains Mono',monospace;font-weight:500;color:var(--warm);font-size:13px;line-height:1.5}
+.steps div::before{counter-increment:s;content:"0" counter(s);font-family:var(--font-mono);font-weight:500;color:var(--accent);font-size:13px;line-height:1.5}
 .steps h3{font-size:17px}
 .steps p{color:var(--muted);font-size:15px}
 
 /* ---------- unsubscribe.html (the cancel page) ---------- */
 /* data-state: ready (Confirm on) | locked (Confirm off, .unsub-note says why) | done | support. */
-.unsub{padding:112px 0 80px}
+.unsub{padding:var(--page-top) 0 clamp(56px,2vw + 40px,80px)}
 .unsub .wrap{max-width:calc(640px + 48px)}
 .unsub-step{display:none;outline:none}
 .unsub[data-state="ready"] [data-show="ask"],
@@ -53,27 +57,38 @@ section.block{padding:40px 0 72px}
 .unsub ::selection{background:var(--accent-soft);color:var(--ink)}
 
 /* ---------- terms, privacy, consent, contact: one plain numbered document ---------- */
-.legal{padding:96px 0 80px}
+/* Spacing and body size scale with the viewport; lines stay at a readable ~68 characters. */
+.legal{padding:var(--page-top) 0 clamp(56px,4vw + 40px,80px)}
 .legal .wrap{max-width:calc(760px + 48px)}
 .legal h1{font-size:clamp(36px,5.2vw,52px);line-height:1.1;letter-spacing:-.015em;margin:14px 0 10px}
-.legal-meta{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted);padding-bottom:28px;margin-bottom:28px;border-bottom:1px solid var(--line)}
-.legal h2{font-size:22px;line-height:1.3;margin:40px 0 12px;scroll-margin-top:96px}
-.legal p,.legal li{font-size:16px;line-height:1.75}
+.legal-meta{font-family:var(--font-mono);font-size:13px;color:var(--muted);padding-bottom:28px;margin-bottom:28px;border-bottom:1px solid var(--line)}
+.legal h2{font-size:clamp(20px,.5vw + 17px,22px);line-height:1.3;margin:clamp(32px,2vw + 24px,40px) 0 12px;scroll-margin-top:calc(var(--header-h,96px) + 16px)}
+.legal p,.legal li{font-size:clamp(16px,.25vw + 15px,17px);line-height:1.75}
+.legal p,.legal ul{max-width:68ch}
 .legal p{margin-bottom:14px}
 .legal ul{padding-left:20px;display:grid;gap:8px;margin-bottom:14px}
 .legal a{color:var(--ink);text-underline-offset:3px;text-decoration-color:var(--accent)}
-footer nav a[aria-current="page"]{color:var(--ink)}
-@media(max-width:600px){.legal{padding:48px 0 56px}}
 
 /* ---------- setup notice ---------- */
-.setup{border:1px dashed var(--warm);border-radius:var(--radius);padding:16px 20px;color:var(--warm);font-size:15px;margin-bottom:20px;background:color-mix(in srgb,var(--warm) 8%,transparent)}
+.setup{border:1px dashed var(--accent);border-radius:var(--radius);padding:16px 20px;color:var(--accent);font-size:15px;margin-bottom:20px;background:color-mix(in srgb,var(--accent) 8%,transparent)}
 
 
 /* ---------- responsive and motion ---------- */
 @media(max-width:600px){
-  .page-hero{padding:40px 0 32px}
+  .page-hero{padding-bottom:32px}
   .btns .btn{width:100%}
-  .unsub{padding:56px 0 56px}
   .offer{padding:24px}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn{transition:none}.unsub-done,.unsub-mark path{animation:none;stroke-dashoffset:0}}
+
+/* Secondary pages also carry Book and Subscribe actions in the header. */
+@media(min-width:680px) and (max-width:1023px){
+  header nav{flex-wrap:wrap;gap:12px 16px}
+  .navlinks{order:3;flex-basis:100%;margin-left:0;gap:28px;border-top:1px solid var(--line);padding-top:10px}
+  .navlinks a{padding:4px 0}
+}
+
+/* --header-h is the header's height at each size, used to offset in-page anchors.
+   Below 680 px base.css lays the header out in two rows (compact logo + theme, then links + pills). */
+:root{--header-h:86px}
+@media(max-width:1023px){:root{--header-h:136px}}
