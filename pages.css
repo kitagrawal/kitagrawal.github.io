@@ -7,8 +7,12 @@ main{flex:1}
 .links a[aria-current="page"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
 .btns{margin-top:28px}
 
+/* Gap between the header and each page's heading: one value for every secondary page,
+   scaling from 32 px on phones to 56 px on wide screens with no jump at a breakpoint. */
+:root{--page-top:clamp(32px,2.4vw + 20px,56px)}
+
 /* ---------- page hero ---------- */
-.page-hero{padding:104px 0 40px}
+.page-hero{padding:var(--page-top) 0 40px}
 .page-hero h1{font-size:clamp(40px,6vw,64px);line-height:1.08;letter-spacing:-.015em;max-width:860px;margin:14px 0 18px}
 .lead{font-size:18px;line-height:1.65;color:var(--muted);max-width:600px}
 section.block{padding:40px 0 72px}
@@ -24,7 +28,7 @@ section.block{padding:40px 0 72px}
 
 /* ---------- unsubscribe.html (the cancel page) ---------- */
 /* data-state: ready (Confirm on) | locked (Confirm off, .unsub-note says why) | done | support. */
-.unsub{padding:112px 0 80px}
+.unsub{padding:var(--page-top) 0 clamp(56px,2vw + 40px,80px)}
 .unsub .wrap{max-width:calc(640px + 48px)}
 .unsub-step{display:none;outline:none}
 .unsub[data-state="ready"] [data-show="ask"],
@@ -54,7 +58,7 @@ section.block{padding:40px 0 72px}
 
 /* ---------- terms, privacy, consent, contact: one plain numbered document ---------- */
 /* Spacing and body size scale with the viewport; lines stay at a readable ~68 characters. */
-.legal{padding:clamp(40px,7vw,96px) 0 clamp(56px,4vw + 40px,80px)}
+.legal{padding:var(--page-top) 0 clamp(56px,4vw + 40px,80px)}
 .legal .wrap{max-width:calc(760px + 48px)}
 .legal h1{font-size:clamp(36px,5.2vw,52px);line-height:1.1;letter-spacing:-.015em;margin:14px 0 10px}
 .legal-meta{font-family:var(--font-mono);font-size:13px;color:var(--muted);padding-bottom:28px;margin-bottom:28px;border-bottom:1px solid var(--line)}
@@ -71,9 +75,8 @@ section.block{padding:40px 0 72px}
 
 /* ---------- responsive and motion ---------- */
 @media(max-width:600px){
-  .page-hero{padding:40px 0 32px}
+  .page-hero{padding-bottom:32px}
   .btns .btn{width:100%}
-  .unsub{padding:56px 0 56px}
   .offer{padding:24px}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn{transition:none}.unsub-done,.unsub-mark path{animation:none;stroke-dashoffset:0}}
