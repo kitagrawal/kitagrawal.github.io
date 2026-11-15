@@ -38,6 +38,6 @@ window.SITE_CONFIG = {
     price: "$7",   // text shown on the home page; "per month" is added there
     subscribeUrl: "https://buy.stripe.com/fZu8wP8pM7aU9LY8sB08g00",
     // cancelApiUrl: the cancel endpoint the hidden unsubscribe.html page posts to.
-    cancelApiUrl: "https://c7d3yimc7d.execute-api.us-east-2.amazonaws.com/cancel"
+    cancelApiUrl: "https://chdrysgnq8.execute-api.us-east-2.amazonaws.com/cancel"
   }
 };
