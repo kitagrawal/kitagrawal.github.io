@@ -1,13 +1,12 @@
-"""Build the six header logos at the repo root from the original light lockup.
+"""Build the three header logos at the repo root from the original lockup.
 Rounds coordinates to 0.1 unit, pads each viewBox 2 units past the letters' true edges (quadratic extrema
-included), makes the dark file the light drawing recoloured, and the compact files the name over a full-width tagline, and the name-only files the name paths alone.
+included), makes the compact file the name over a full-width tagline, and the name-only file the name paths alone.
 Run from the repo root:  python3 -I tools/header-logos/build.py
 If the viewBox sizes change, update the aspect-ratio values on .logo-art in base.css."""
 import re, os
 root = '.'
 src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'source', 'logo-light.svg')).read()
 INK, ACC = '#171C22', '#2457E7'
-DINK, DACC = '#F5F2EA', '#2457E7'
 PAD = 2.0
 
 def tokens(d):
@@ -124,11 +123,8 @@ def svg(its, rects, ink, acc, label):
 FULL = 'ANKIT “KIT” AGRAWAL, The Applied AI Letter'
 for fn, (its, rects), ink, acc, label in [
     ('logo-light.svg', full, INK, ACC, FULL),
-    ('logo-dark.svg', full, DINK, DACC, FULL),
     ('logo-compact-light.svg', compact, INK, ACC, FULL),
-    ('logo-compact-dark.svg', compact, DINK, DACC, FULL),
-    ('logo-name-light.svg', (name, []), INK, ACC, 'ANKIT “KIT” AGRAWAL'),
-    ('logo-name-dark.svg', (name, []), DINK, DACC, 'ANKIT “KIT” AGRAWAL')]:
+    ('logo-name-light.svg', (name, []), INK, ACC, 'ANKIT “KIT” AGRAWAL')]:
     s, dims = svg(its, rects, ink, acc, label)
     open(f'{root}/{fn}', 'w').write(s)
     print(fn, len(s), 'w=%.1f h=%.1f top=%.1f' % dims)

@@ -89,6 +89,6 @@ section.block{padding:40px 0 72px}
 }
 
 /* --header-h is the header's height at each size, used to offset in-page anchors.
-   Below 680 px base.css lays the header out in two rows (compact logo + theme, then links + pills). */
+   Below 680 px base.css lays the header out in two rows (compact logo, then links + pills). */
 :root{--header-h:86px}
 @media(max-width:1023px){:root{--header-h:136px}}

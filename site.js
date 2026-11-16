@@ -1,16 +1,7 @@
 /* Shared helpers for index.html, book.html, unsubscribe.html and 404.html */
 (function () {
-  const root = document.documentElement;
-
-  // theme (storage key "theme")
-  try { const t = localStorage.getItem('theme'); if (t) root.dataset.theme = t; } catch (e) {}
-  const btn = document.getElementById('theme');
-  if (btn) btn.addEventListener('click', () => {
-    const isDark = root.dataset.theme === 'dark' ||
-      (!root.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
-    root.dataset.theme = isDark ? 'light' : 'dark';
-    try { localStorage.setItem('theme', root.dataset.theme); } catch (e) {}
-  });
+  // The site is light only. Clear the theme choice an earlier version saved, so nothing stays stored.
+  try { localStorage.removeItem('theme'); } catch (e) {}
 
   const y = document.getElementById('year');
   if (y) y.textContent = new Date().getFullYear();
@@ -60,7 +51,7 @@
     nodes.forEach(n => {
       n.setAttribute('data-cal-link', cal.bookLink.trim().replace(/^\/+/, ''));
       n.setAttribute('data-cal-origin', origin);
-      n.setAttribute('data-cal-config', JSON.stringify({ layout: 'month_view', theme: 'auto' }));
+      n.setAttribute('data-cal-config', JSON.stringify({ layout: 'month_view', theme: 'light' }));
     });
     if (calLoaded) return;
     calLoaded = true;
@@ -82,7 +73,7 @@
       };
     })(window, origin + '/embed/embed.js', 'init');
     window.Cal('init', { origin: origin });
-    window.Cal('ui', { theme: 'auto', layout: 'month_view' });
+    window.Cal('ui', { theme: 'light', layout: 'month_view' });
   }
 
   // Consultation cards from cfg.consultations (index.html #advisory and book.html).
