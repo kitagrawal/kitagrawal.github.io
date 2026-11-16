@@ -67,17 +67,33 @@ src_items = []
 for tx, ty, d in paths:
     tx, ty = float(tx), float(ty); g = walk(d)
     src_items.append((tx, ty, g, bbox(g, tx, ty)))
-# The source sets a word space between the closing quote and AGRAWAL (optical gap 97 units at the
-# quote's height, against 19 between the opening quote and KIT). Pull AGRAWAL left by the difference
-# so both quotes sit tight to the name they enclose.
-NAME_KERN = 78.0
-src_items = [(tx - NAME_KERN, ty, g, bbox(g, tx - NAME_KERN, ty)) if ty == 100 and b[0] > 900 else (tx, ty, g, b)
-             for tx, ty, g, b in src_items]
+# The source writes the name ANKIT (KIT) AGRAWAL with uneven gaps around the quotes. Swap the
+# quotes for drawn parentheses, ANKIT (KIT) AGRAWAL, and set even spacing: a word space (WORD) outside
+# each parenthesis and a tight gap (TIGHT) inside. Source glyph groups on the name line, by translate x:
+# 0 = ANKIT, 510 = open quote, 350 = KIT, 840 = close quote, 430 = AGRAWAL.
+WORD, TIGHT = 38.0, 10.0
+PAREN_L = walk('M32 -110Q2 -84 2 -47Q2 -10 32 16L34 12Q16 -10 16 -47Q16 -84 34 -106Z')
+PAREN_R = walk('M2 -110Q32 -84 32 -47Q32 -10 2 16L0 12Q18 -10 18 -47Q18 -84 0 -106Z')
+by = {}
+for it in src_items:
+    if it[1] == 100: by.setdefault(it[0], []).append(it)
+edge = lambda its, i: (min if i == 0 else max)(it[3][i] for it in its)
+def moved(its, dx):
+    return [(tx + dx, ty, g, bbox(g, tx + dx, ty)) for tx, ty, g, _ in its]
+def place(g, x):
+    b = bbox(g, 0, 100); tx = x - b[0]
+    return (tx, 100.0, g, bbox(g, tx, 100))
+x = edge(by[0.0], 2) + WORD
+po = place(PAREN_L, x)
+kit = moved(by[350.0], po[3][2] + TIGHT - edge(by[350.0], 0))
+pc = place(PAREN_R, edge(kit, 2) + TIGHT)
+ag = moved(by[430.0], pc[3][2] + WORD - edge(by[430.0], 0))
+src_items = by[0.0] + [po] + kit + [pc] + ag + [it for it in src_items if it[1] != 100]
 name = [it for it in src_items if it[1] == 100]
 src_tag = [it for it in src_items if it[1] == 160]
 left = min(it[3][0] for it in name)
 right = max(it[3][2] for it in name)
-name_bottom = max(it[3][3] for it in name)
+name_bottom = max(it[3][3] for it in name if it not in (po, pc))  # letters only, not the parentheses
 tag_cx = (min(it[3][0] for it in src_tag) + max(it[3][2] for it in src_tag)) / 2
 tag_w = max(it[3][2] for it in src_tag) - min(it[3][0] for it in src_tag)
 tag_cap = 160 - min(it[3][1] for it in src_tag)
@@ -120,11 +136,11 @@ def svg(its, rects, ink, acc, label):
     return (f'<svg role="img" aria-label="{label}" xmlns="http://www.w3.org/2000/svg" viewBox="{vb}">'
             f'<g fill="{ink}">{body}{r}</g></svg>\n'), (x1-x0, y1-y0, y0)
 
-FULL = 'ANKIT “KIT” AGRAWAL, The Applied AI Letter'
+FULL = 'ANKIT (KIT) AGRAWAL, The Applied AI Letter'
 for fn, (its, rects), ink, acc, label in [
     ('logo-light.svg', full, INK, ACC, FULL),
     ('logo-compact-light.svg', compact, INK, ACC, FULL),
-    ('logo-name-light.svg', (name, []), INK, ACC, 'ANKIT “KIT” AGRAWAL')]:
+    ('logo-name-light.svg', (name, []), INK, ACC, 'ANKIT (KIT) AGRAWAL')]:
     s, dims = svg(its, rects, ink, acc, label)
     open(f'{root}/{fn}', 'w').write(s)
     print(fn, len(s), 'w=%.1f h=%.1f top=%.1f' % dims)
