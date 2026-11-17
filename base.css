@@ -31,11 +31,10 @@ header{position:sticky;top:0;z-index:10;background:var(--bg);border-bottom:1px s
 nav{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 0}
 .logo{display:block;flex:none;line-height:0;text-decoration:none;padding-block:6px;margin-block:-6px}
 /* Outlined Newsreader assets remain crisp without a font download. */
-.logo-art{display:block;width:clamp(340px,35vw,440px);aspect-ratio:1669.3/191.6;background:url(logo-light.svg) left center/contain no-repeat}
-/* Below 680 px the compact lockup (the name over a full-width tagline) takes the first row
-   to itself, so the tagline keeps enough width to read. */
+.logo-art{display:block;width:clamp(340px,35vw,440px);aspect-ratio:1669.3/130;background:url(logo-name-light.svg) left center/contain no-repeat}
+/* Below 680 px the name takes the first row to itself. */
 @media (max-width:679px){
-  header .logo-art{width:100%;max-width:360px;aspect-ratio:1669.3/207;background-image:url(logo-compact-light.svg)}
+  header .logo-art{width:100%;max-width:360px}
 }
 .navlinks{display:flex;margin-left:auto;gap:28px;font-size:15px;line-height:1.5}
 .navlinks a{text-decoration:none;color:var(--muted);transition:color .2s;padding-block:4px}
@@ -82,7 +81,7 @@ nav{display:flex;align-items:center;justify-content:space-between;gap:16px;paddi
 .footer-top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:28px clamp(32px,6vw,96px)}
 .footer-brand{display:flex;flex-direction:column;gap:12px;flex:1 1 260px}
 .footer-brand .logo{align-self:flex-start}
-.footer-brand .logo-art{width:260px;max-width:100%;aspect-ratio:1669.3/130;background-image:url(logo-name-light.svg)}/* Resets the header's nav rule (centred, 20 px padding) so both columns top-align. */
+.footer-brand .logo-art{width:260px;max-width:100%}/* Resets the header's nav rule (centred, 20 px padding) so both columns top-align. */
 .footer-cols{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:flex-start;padding:0;gap:24px clamp(24px,6vw,88px)}
 .footer-col{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:120px}
 .footer-col h2{font:500 12px/1.5 var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
