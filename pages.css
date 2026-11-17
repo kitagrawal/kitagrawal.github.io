@@ -4,7 +4,6 @@
 /* ---------- page frame: footer sticks to the bottom ---------- */
 body{min-height:100vh;display:flex;flex-direction:column}
 main{flex:1}
-.links a[aria-current="page"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
 .btns{margin-top:28px}
 
 /* Gap between the header and each page's heading: one value for every secondary page,
@@ -81,14 +80,7 @@ section.block{padding:40px 0 72px}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn{transition:none}.unsub-done,.unsub-mark path{animation:none;stroke-dashoffset:0}}
 
-/* Secondary pages also carry Book and Subscribe actions in the header. */
-@media(min-width:680px) and (max-width:1023px){
-  header nav{flex-wrap:wrap;gap:12px 16px}
-  .navlinks{order:3;flex-basis:100%;margin-left:0;gap:28px;border-top:1px solid var(--line);padding-top:10px}
-  .navlinks a{padding:4px 0}
-}
-
 /* --header-h is the header's height at each size, used to offset in-page anchors.
-   Below 680 px base.css lays the header out in two rows (compact logo, then links + pills). */
-:root{--header-h:86px}
-@media(max-width:1023px){:root{--header-h:136px}}
+   Below 680 px base.css lays the header out in two rows (compact logo, then links). */
+:root{--header-h:80px}
+@media(max-width:679px){:root{--header-h:124px}}
