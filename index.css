@@ -3,7 +3,7 @@
 
 /* ---------- page frame ---------- */
 html{scroll-padding-top:96px}
-@media(max-width:679px){html{scroll-padding-top:136px}}
+@media(max-width:959px){html{scroll-padding-top:136px}}
 
 /* Half the space between two sections: each band pads top and bottom by this, so
    sections sit about 42 px apart at 900 px and 29 px apart on phones. */
