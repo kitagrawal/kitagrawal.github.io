@@ -68,7 +68,7 @@ for tx, ty, d in paths:
     tx, ty = float(tx), float(ty); g = walk(d)
     src_items.append((tx, ty, g, bbox(g, tx, ty)))
 # The source writes the name ANKIT (KIT) AGRAWAL with uneven gaps around the quotes. Swap the
-# quotes for drawn parentheses, ANKIT (KIT) AGRAWAL, and set even spacing: a word space (WORD) outside
+# quotes for drawn parentheses, reorder to ANKIT AGRAWAL (KIT), and set even spacing: a word space (WORD) outside
 # each parenthesis and a tight gap (TIGHT) inside. Source glyph groups on the name line, by translate x:
 # 0 = ANKIT, 510 = open quote, 350 = KIT, 840 = close quote, 430 = AGRAWAL.
 WORD, TIGHT = 38.0, 10.0
@@ -83,12 +83,11 @@ def moved(its, dx):
 def place(g, x):
     b = bbox(g, 0, 100); tx = x - b[0]
     return (tx, 100.0, g, bbox(g, tx, 100))
-x = edge(by[0.0], 2) + WORD
-po = place(PAREN_L, x)
+ag = moved(by[430.0], edge(by[0.0], 2) + WORD - edge(by[430.0], 0))
+po = place(PAREN_L, edge(ag, 2) + WORD)
 kit = moved(by[350.0], po[3][2] + TIGHT - edge(by[350.0], 0))
 pc = place(PAREN_R, edge(kit, 2) + TIGHT)
-ag = moved(by[430.0], pc[3][2] + WORD - edge(by[430.0], 0))
-src_items = by[0.0] + [po] + kit + [pc] + ag + [it for it in src_items if it[1] != 100]
+src_items = by[0.0] + ag + [po] + kit + [pc] + [it for it in src_items if it[1] != 100]
 name = [it for it in src_items if it[1] == 100]
 src_tag = [it for it in src_items if it[1] == 160]
 left = min(it[3][0] for it in name)
@@ -136,11 +135,11 @@ def svg(its, rects, ink, acc, label):
     return (f'<svg role="img" aria-label="{label}" xmlns="http://www.w3.org/2000/svg" viewBox="{vb}">'
             f'<g fill="{ink}">{body}{r}</g></svg>\n'), (x1-x0, y1-y0, y0)
 
-FULL = 'ANKIT (KIT) AGRAWAL, The Applied AI Letter'
+FULL = 'ANKIT AGRAWAL (KIT), The Applied AI Letter'
 for fn, (its, rects), ink, acc, label in [
     ('logo-light.svg', full, INK, ACC, FULL),
     ('logo-compact-light.svg', compact, INK, ACC, FULL),
-    ('logo-name-light.svg', (name, []), INK, ACC, 'ANKIT (KIT) AGRAWAL')]:
+    ('logo-name-light.svg', (name, []), INK, ACC, 'ANKIT AGRAWAL (KIT)')]:
     s, dims = svg(its, rects, ink, acc, label)
     open(f'{root}/{fn}', 'w').write(s)
     print(fn, len(s), 'w=%.1f h=%.1f top=%.1f' % dims)
