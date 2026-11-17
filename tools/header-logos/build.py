@@ -1,6 +1,6 @@
-"""Build the three header logos at the repo root from the original lockup.
+"""Build the two logos at the repo root from the original lockup.
 Rounds coordinates to 0.1 unit, pads each viewBox 2 units past the letters' true edges (quadratic extrema
-included), makes the compact file the name over a full-width tagline, and the name-only file the name paths alone.
+included), and makes the name-only file (the site's header and footer) from the name paths alone; the full lockup is kept for tools/og-image.
 Run from the repo root:  python3 -I tools/header-logos/build.py
 If the viewBox sizes change, update the aspect-ratio values on .logo-art in base.css."""
 import re, os
@@ -120,10 +120,6 @@ def lockup(k, base, rules):
 # Full lockup (680 px and up): the source tagline's capitals are ~35 units tall against ~102 for the
 # name, about 7-9 px in the header, so it is scaled 1.4x and dropped clear of the name.
 full = lockup(1.4, 175.0, True)
-# Compact lockup (below 680 px, where the logo is 190-340 px wide): the tagline is scaled to the
-# name's full width, with no rules, so its capitals stay about 9-12 px tall.
-k_compact = (right - left) / tag_w
-compact = lockup(k_compact, name_bottom + 20 + tag_cap * k_compact, False)
 
 def svg(its, rects, ink, acc, label):
     bs = [it[3] for it in its] + [(x, y, x + w, y + h) for x, y, w, h in rects]
@@ -138,7 +134,6 @@ def svg(its, rects, ink, acc, label):
 FULL = 'ANKIT AGRAWAL (KIT), The Applied AI Letter'
 for fn, (its, rects), ink, acc, label in [
     ('logo-light.svg', full, INK, ACC, FULL),
-    ('logo-compact-light.svg', compact, INK, ACC, FULL),
     ('logo-name-light.svg', (name, []), INK, ACC, 'ANKIT AGRAWAL (KIT)')]:
     s, dims = svg(its, rects, ink, acc, label)
     open(f'{root}/{fn}', 'w').write(s)
