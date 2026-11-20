@@ -31,13 +31,12 @@ window.SITE_CONFIG = {
   },
 
   /* ---- Newsletter ----
-     subscribeUrl: where every "Subscribe" button goes. Use your newsletter tool's
-     paid-subscribe page (recommended, so its subscriber list stays in sync with Stripe)
-     or a Stripe recurring Payment Link. Must start with https://. */
+     Both values are same-origin paths served by the Worker (worker/index.js), which holds the
+     real destinations as secrets. subscribeUrl: where every "Subscribe" button goes.
+     cancelApiUrl: the endpoint the hidden unsubscribe.html page posts to. */
   newsletter: {
     price: "$3",   // text shown on the home page; "per month" is added there
-    subscribeUrl: "https://buy.stripe.com/14A6oHaxU8eYgamfV308g01",
-    // cancelApiUrl: the cancel endpoint the hidden unsubscribe.html page posts to.
-    cancelApiUrl: "https://chdrysgnq8.execute-api.us-east-2.amazonaws.com/cancel"
+    subscribeUrl: "/subscribe",
+    cancelApiUrl: "/api/cancel"
   }
 };
