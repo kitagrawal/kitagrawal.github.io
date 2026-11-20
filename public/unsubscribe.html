@@ -118,7 +118,7 @@
 
   history.replaceState(null, '', location.pathname); // keep the customer id out of the address bar and history
   if (!c) return lock('This page works from the Cancel link at the bottom of any letter. Open that link and it brings you back here, ready to confirm. Or email support@appliedailetter.com.');
-  if (!/^https:\/\//.test(url) || /REPLACE/i.test(url)) return lock('Online cancel is not switched on yet. Email support@appliedailetter.com and your plan will be cancelled for you.');
+  if (!/^(https:\/\/|\/(?![\/\\]))/.test(url) || /REPLACE/i.test(url)) return lock('Online cancel is not switched on yet. Email support@appliedailetter.com and your plan will be cancelled for you.');
   btn.disabled = false;
   show('ready');
 

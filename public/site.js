@@ -23,13 +23,14 @@
     return n;
   }
 
-  // Subscribe links: every [data-subscribe] element points at cfg.newsletter.subscribeUrl
-  // (a Stripe Payment Link or your newsletter tool's subscribe page).
+  // Subscribe links: every [data-subscribe] element points at cfg.newsletter.subscribeUrl:
+  // a same-origin path such as "/subscribe" (the Worker redirects it) or an https:// URL.
   // Not set yet: the element is greyed out and not clickable.
   function initSubscribe() {
     const url = (cfg.newsletter || {}).subscribeUrl;
     document.querySelectorAll('[data-subscribe]').forEach(a => {
-      if (/^https:\/\//i.test(url || '') && isSet(url)) { a.href = url; a.rel = 'noopener'; }
+      if (isSet(url) && /^\/(?![\/\\])/.test(url)) a.href = url;  // same-origin path: no rel needed
+      else if (isSet(url) && /^https:\/\//i.test(url)) { a.href = url; a.rel = 'noopener'; }
       else { a.removeAttribute('href'); a.classList.add('disabled'); a.setAttribute('aria-disabled', 'true'); }
     });
   }
