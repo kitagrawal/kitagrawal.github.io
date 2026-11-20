@@ -1,10 +1,10 @@
-"""Build the two logos at the repo root from the original lockup.
+"""Build the two logos in public/ from the original lockup.
 Rounds coordinates to 0.1 unit, pads each viewBox 2 units past the letters' true edges (quadratic extrema
 included), and makes the name-only file (the site's header and footer) from the name paths alone; the full lockup is kept for tools/og-image.
-Run from the repo root:  python3 -I tools/header-logos/build.py
+Run from the repo root (writes into public/):  python3 -I tools/header-logos/build.py
 If the viewBox sizes change, update the aspect-ratio values on .logo-art in base.css."""
 import re, os
-root = '.'
+root = 'public'
 src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'source', 'logo-light.svg')).read()
 INK, ACC = '#171C22', '#2457E7'
 PAD = 2.0

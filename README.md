@@ -4,6 +4,8 @@ Static portfolio site, hosted on GitHub Pages. No build step or dependencies.
 
 ## Files
 
+The deployed site lives in `public/`; the paths below are relative to it, except `worker/` and `wrangler.jsonc` at the repo root.
+
 | File | Purpose |
 |------|---------|
 | `index.html` | Home page. Styles in `index.css`, behaviour in `home.js` |
@@ -17,7 +19,8 @@ Static portfolio site, hosted on GitHub Pages. No build step or dependencies.
 | `favicon.svg` | Icon |
 | `logo-*.svg`, `monogram-light.svg` | Outlined logos (`logo-name-light.svg`, the name alone, in the header and footer; `logo-light.svg`, the full lockup with the tagline, used only by `tools/og-image`) and the K. monogram; rebuild the logos with `tools/header-logos/build.py` |
 | `og-image.png`, `apple-touch-icon.png` | Social share card and iOS home-screen icon; rebuild with `tools/og-image/build.sh` |
-| `robots.txt`, `sitemap.xml`, `.nojekyll` | Search engine rules and indexable pages; serve files as-is on GitHub Pages |
+| `robots.txt`, `sitemap.xml` | Search engine rules and indexable pages |
+| `../worker/index.js`, `../wrangler.jsonc` | Cloudflare Worker (serves `public/`, proxies `/api/cancel`, redirects `/subscribe`) and its config; test with `node --test worker/index.test.mjs` |
 
 ## Brand system
 
