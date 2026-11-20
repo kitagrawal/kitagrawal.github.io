@@ -114,3 +114,9 @@ test('everything else goes to the static assets', async () => {
   assert.equal(res.status, 200);
   assert.equal(await res.text(), 'asset:/book.html');
 });
+
+test('/subscribe falls back to / when SUBSCRIBE_URL is malformed', async () => {
+  const res = await worker.fetch(new Request('https://appliedailetter.com/subscribe'), makeEnv({ SUBSCRIBE_URL: 'not a url' }));
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.get('location'), 'https://appliedailetter.com/');
+});

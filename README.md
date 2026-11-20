@@ -9,7 +9,7 @@ Static portfolio site served by a Cloudflare Worker at https://appliedailetter.c
 | `public/` | The deployed site: every page, stylesheet, script and image (file table below) |
 | `worker/index.js` | The Worker: serves `public/`, redirects `www` to the apex, proxies `POST /api/cancel` to AWS with a shared-secret header and a per-IP rate limit, redirects `/subscribe` to the Stripe Payment Link |
 | `wrangler.jsonc` | Worker config: name, assets directory, rate-limit binding, custom domains |
-| `index.html`, `404.html`, `.nojekyll` (repo root) | GitHub Pages redirect stubs for the old `kitagrawal.github.io` address. Each sends the visitor to the same path, query and hash on appliedailetter.com. They are the only thing GitHub Pages serves now |
+| `index.html`, `404.html`, `.nojekyll` (repo root) | GitHub Pages redirect stubs for the old `kitagrawal.github.io` address. Each sends the visitor to the same path, query and hash on appliedailetter.com. GitHub Pages still serves the rest of the repo as raw files (including an inert copy under `/public/`, whose canonical links point at appliedailetter.com); none of it holds a secret |
 | `tools/` | Build helpers (`header-logos/`, `og-image/`) and the cutover wizard `cloudflare-setup.sh` |
 | `docs/` | Images used by this README |
 

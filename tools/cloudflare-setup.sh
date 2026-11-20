@@ -377,6 +377,25 @@ preflight() {
 
 # ── stages ────────────────────────────────────────────────────────────────
 
+# POST a fake customer id through the Worker. Only HTTP 200 with {"error":...} proves the whole path:
+# 403 = Worker secret and AWS field differ (enforce), 503 = a Worker secret is unset, 502 = AWS unreachable, 429 = rate limit.
+worker_cancel_check() {
+  local out code body
+  out=$(curl -sS --max-time 20 -w '\n%{http_code}' -X POST -H 'content-type: application/json' --data '{"c":"cus_invalid"}' "https://$DOMAIN/api/cancel" 2>/dev/null || true)
+  code="${out##*$'\n'}"; body="${out%$'\n'*}"
+  if [[ "$code" == 200 && "$body" == *'"error"'* ]]; then
+    printf '  %s✓%s POST /api/cancel with a fake id → 200 %s\n' "$GREEN" "$RESET" "$body"
+  else
+    printf '  %s✗%s POST /api/cancel → %s %s (wanted 200 with "error")\n' "$RED" "$RESET" "${code:-000}" "${body:-<empty>}"
+    case "$code" in
+      403) warn "403: the Worker secret and the Secrets Manager field differ. Re-run stage 4; the Lambda picks up a rotated value within a minute." ;;
+      503) warn "503: a Worker secret (CANCEL_API_URL or CANCEL_SHARED_SECRET) is unset. Re-run stage 4." ;;
+      502) warn "502: the Worker could not reach CANCEL_API_URL. Check the value in stage 4." ;;
+      429) warn "429: rate limit hit; wait a minute and re-run this stage." ;;
+    esac
+  fi
+}
+
 stage_snapshot() {
   stage "Snapshot the current DNS (mail must not break)"
   say "Records for $DOMAIN are read with dig from the CURRENT authoritative server and saved outside the repo."
@@ -534,6 +553,10 @@ stage_secrets() {
   read -r mode || true
   if [[ "$mode" =~ ^[Pp] ]]; then
     ask_secret SHARED_SECRET "Paste the existing secret value:"
+    while [[ -z "${SHARED_SECRET//[[:space:]]/}" ]]; do
+      warn "The secret is empty; the Worker would answer 503 to every cancel."
+      ask_secret SHARED_SECRET "Paste the existing secret value:"
+    done
   else
     SHARED_SECRET=$(openssl rand -hex 32)
     if need pbcopy; then
@@ -619,13 +642,7 @@ stage_first_deploy() {
   http_check "www redirects to the apex" 301 "https://www.$DOMAIN/" || true
   loc=$(curl -sS -o /dev/null -w '%{redirect_url}' --max-time 20 "https://www.$DOMAIN/" 2>/dev/null || true)
   [[ "$loc" == "https://$DOMAIN/" ]] && printf '  %s✓%s www → %s\n' "$GREEN" "$RESET" "$loc" || printf '  %s✗%s www goes to %s\n' "$RED" "$RESET" "${loc:-<nowhere>}"
-  local body
-  body=$(curl -sS --max-time 20 -X POST -H 'content-type: application/json' --data '{"c":"cus_invalid"}' "https://$DOMAIN/api/cancel" 2>/dev/null || true)
-  if [[ "$body" == *'"error"'* ]]; then
-    printf '  %s✓%s POST /api/cancel with a fake id → %s\n' "$GREEN" "$RESET" "$body"
-  else
-    printf '  %s✗%s POST /api/cancel did not return JSON with "error": %s\n' "$RED" "$RESET" "${body:-<empty>}"
-  fi
+  worker_cancel_check
   note "That POST reached the live cancel API with a fake customer id; it changes nothing."
   pause "Press Enter to continue."
 }
@@ -721,11 +738,7 @@ stage_backend_enforce() {
   else
     note "Skipped the direct-call check."
   fi
-  local body
-  body=$(curl -sS --max-time 20 -X POST -H 'content-type: application/json' --data '{"c":"cus_invalid"}' "https://$DOMAIN/api/cancel" 2>/dev/null || true)
-  [[ "$body" == *'"error"'* ]] && printf '  %s✓%s through the Worker a fake id still gets JSON: %s\n' "$GREEN" "$RESET" "$body" \
-    || printf '  %s✗%s through the Worker: %s\n' "$RED" "$RESET" "${body:-<empty>}"
-  warn "If the Worker answers 403 here, the Worker secret and the AWS field differ. Re-run stage 4."
+  worker_cancel_check
   note "Last: do one real unsubscribe test from a letter link on https://$DOMAIN/unsubscribe.html."
   pause "Press Enter to finish."
 }

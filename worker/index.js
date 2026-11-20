@@ -48,7 +48,11 @@ export default {
     if (url.pathname === '/api/cancel') return cancel(request, env);
 
     if (url.pathname === '/subscribe' && (request.method === 'GET' || request.method === 'HEAD')) {
-      return Response.redirect(env.SUBSCRIBE_URL || new URL('/', url).href, 302);
+      try {
+        return Response.redirect(env.SUBSCRIBE_URL || new URL('/', url).href, 302);
+      } catch {
+        return Response.redirect(new URL('/', url).href, 302); // malformed SUBSCRIBE_URL secret
+      }
     }
 
     return env.ASSETS.fetch(request);
